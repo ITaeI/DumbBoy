@@ -1,28 +1,32 @@
 #pragma once
-
 #include "common.h"
+#include "Screen.h"
+#include "cart.h"
+#include "cpu.h"
+#include "bus.h"
 
-class Emulator
+namespace GBEmu
 {
-    private:
-
-    struct EmulatorState
+    class Emulator
     {
+        private:
+
+
+        public:
+        //Emulator Components
+        cpu processor;
+        cart cartridge;
+        bus systemBus;
+
+        // Emulator Constructor
+        Emulator();
+
+        // Emulator Context
         bool paused;
         bool running;
-        uint64_t ticks;
+        u64 ticks;
+
+
+        int run();
     };
-
-    static EmulatorState emu_ctx;
-
-    public:
-    //Emulator constructor
-    Emulator()
-    {}
-    //Run the emulator
-    int run(int argc, char *argv[]);
-    //Get the state of the emulator
-    EmulatorState getState();
-
-
-};
+}

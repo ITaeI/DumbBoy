@@ -9,12 +9,12 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
 
 set(EXECUTABLE_NAME ${PROJECT_NAME})
 
-add_executable(${EXECUTABLE_NAME})
+add_executable(${EXECUTABLE_NAME}) 
  
 file(GLOB SOURCES "src/*.cpp")
 target_sources(${EXECUTABLE_NAME} PRIVATE ${SOURCES})
  
-add_subdirectory(ThirdParty/SDL)  
- 
+add_subdirectory(ThirdParty/SDL)   
+  
 target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/include")
 target_link_libraries(${EXECUTABLE_NAME} PRIVATE SDL3::SDL3)   

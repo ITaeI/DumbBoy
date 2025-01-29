@@ -1,9 +1,10 @@
 #include "common.h"
+#include "Emulator.h"
 #include <SDL3/SDL_main.h>
 
 
 int main(int argc, char *argv[])
 {
-    Emulator emu;
-    return emu.run(argc, argv);
+    GBEmu::Emulator emu;
+    return emu.run();
 }

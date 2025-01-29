@@ -1,10 +1,12 @@
 #pragma once 
 #include "common.h"
 
+
 class Screen
 {
     private:
     //Screen dimensions
+    std::string title;
     const int SCREEN_WIDTH;
     const int SCREEN_HEIGHT;
     static SDL_Window *window;
@@ -13,7 +15,7 @@ class Screen
     public:
 
     //Screen constructor
-    Screen(std::string title, int width, int height) : SCREEN_WIDTH(width), SCREEN_HEIGHT(height)
+    Screen(std::string title, int width, int height) : title(title), SCREEN_WIDTH(width), SCREEN_HEIGHT(height)
     {
         window = nullptr;
         renderer = nullptr;
@@ -28,6 +30,8 @@ class Screen
         std::cout << "Quitting SDL" << std::endl;
         SDL_Quit();
     }
+
+
     //Initialize the screen
     SDL_AppResult InitializeScreen();
 };

@@ -1,42 +1,57 @@
 #pragma once
 #include "common.h"
 
-class cart
+
+
+namespace GBEmu
 {
-    private:
 
-    public:
+    class Emulator;
 
-    struct cart_header
+    class cart
     {
-        u8 entry[4];
-        u8 nintendo_logo[0x30];
+        private:
+        //Get the licensee name by code
+        std::string getRomTypeName(int code);
+        //Get the ROM type name by code
+        std::string getLicenseeName(int code);
 
-        char title[16];
-        u16 licensee_code;
-        u8 sgb_flag;
-        u8 cart_type;
-        u8 rom_size;
-        u8 ram_size;
-        u8 dest_code;
-        u8 lic_code;
-        u8 version;
-        u8 checksum;
-        u16 global_checksum;
-    };
+        Emulator *Emu;
 
-    struct cart_context
-    {
-        char filename[1024];
-        u32 rom_size;
-        u8 *romdata;
+        public:
+
+        struct cart_header
+        {
+            u8 entry[4];
+            u8 nintendo_logo[0x30];
+            char title[16];
+            u16 licensee_code;
+            u8 sgb_flag;
+            u8 cart_type;
+            u8 rom_size;
+            u8 ram_size;
+            u8 dest_code;
+            u8 lic_code;
+            u8 version;
+            u8 checksum;
+            u16 global_checksum;
+        };
+
+        // Cart context
+        char cart_filename[1024];
+        u32 cart_rom_size;
+        u8 *cart_romdata;
         cart_header *header;
+
+
+        //Load a ROM file
+        bool cart_load(char *filename);
+        //Read a byte from the ROM
+        u8 read(u16 addr);
+        //Write a byte to the ROM
+        u8 write(u16 addr, u8 data);
+
+        void connectCartridge(Emulator* emu);
+
     };
-
-    static cart_context cart_ctx;
-    //Load a ROM file
-    bool cart_load(char *filename);
-    std::string getRomTypeName(int code);
-    std::string getLicenseeName(int code);
-
-};
+}

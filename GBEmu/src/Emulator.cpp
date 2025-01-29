@@ -1,4 +1,5 @@
-#include "common.h"
+#include "Emulator.h"
+#include "Screen.h"
 /*
     Emulator Components:
 
@@ -10,63 +11,39 @@
 
 */ 
 
-    Emulator::EmulatorState Emulator::emu_ctx;
-
-int Emulator::run(int argc, char *argv[])
+namespace GBEmu
 {
-    if(argc<2)
+    Emulator::Emulator()
     {
-        std::cout << "Usage: " << argv[0] << " <rom file>" << std::endl;
-        return -1;
-    }
-    cart cart;
-    if (cart.cart_load(argv[1]) != 0)
-    {
-        std::cout << "Failed to load ROM" << std::endl;
-        return -2;
+        processor.connectCPU(this);
+        systemBus.connectBus(this);
+        cartridge.connectCartridge(this);
     }
 
-    std::cout << "ROM Loaded" << std::endl;
 
-    // Initialize the SDL, Window, and Renderer
-    Screen display("GBEmu", 1280, 720);
-    if(display.InitializeScreen() != SDL_APP_CONTINUE)
+    int Emulator::run()
     {
-        std::cout << "Failed to initialize screen" << std::endl;
-        return -3;
-    }
+        // Load Rom Cartridge
+        cartridge.cart_load("Super Mario Land (JUE) (V1.1) [!].gb");
 
-    // Initialize the CPU
-    cpu cpu;
+        // Initialize the Screen
+        Screen screen("GBEmu", 1280, 720);
+        screen.InitializeScreen();
 
-    emu_ctx.running = true;
-    emu_ctx.paused = false;
-    emu_ctx.ticks = 0;
-
-    while(emu_ctx.running)
-    {
-        if(emu_ctx.paused)
+        // Main Emulator Loop
+        while (running)
         {
- 
-            SDL_Delay(10);
-            continue;
-        }
-
-        if(!emu_ctx.paused)
-        {
-            //Run the CPU
-            if(!cpu.step())
+            // poll for events
+            SDL_Event event;
+            while (SDL_PollEvent(&event))
             {
-                std::cout << "CPU Error" << std::endl;
-                return -3;
+                if (event.type == SDL_EVENT_QUIT)
+                {
+                    running = false;
+                }
             }
 
         }
+        return 0;
     }
-    return 0;
-}
-
-Emulator::EmulatorState Emulator::getState()
-{
-    return emu_ctx;
 }
