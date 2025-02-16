@@ -21,9 +21,9 @@ namespace GBEmu
 
     // write a byte to the ROM
 
-    u8 cart::write(u16 addr, u8 data)
+    void cart::write(u16 addr, u8 data)
     {
-        return 0x00;
+        cart_romdata[addr] = data;
     }
 
 

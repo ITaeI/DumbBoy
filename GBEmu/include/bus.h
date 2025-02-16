@@ -15,7 +15,7 @@ namespace GBEmu
 
 
         u8 read(u16 addr);
-        u8 write(u16 addr, u8 data);
+        void write(u16 addr, u8 data);
         void connectBus(Emulator* emu);
 
     };

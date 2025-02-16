@@ -1,5 +1,5 @@
 #include "Emulator.h"
-#include "Screen.h"
+#include <thread>
 /*
     Emulator Components:
 
@@ -18,8 +18,26 @@ namespace GBEmu
         processor.connectCPU(this);
         systemBus.connectBus(this);
         cartridge.connectCartridge(this);
+        systemRam.connectRAM(this);
+        screen.connectScreen(this);
     }
 
+    int Emulator::runCPU()
+    {
+        //Intialize the processor(cpu)
+        processor.init();
+
+        while (running || !exit)
+        {
+
+            if(!processor.step())
+            {
+
+            }
+
+        }
+        return 0;
+    }
 
     int Emulator::run()
     {
@@ -27,22 +45,17 @@ namespace GBEmu
         cartridge.cart_load("Super Mario Land (JUE) (V1.1) [!].gb");
 
         // Initialize the Screen
-        Screen screen("GBEmu", 1280, 720);
-        screen.InitializeScreen();
+        screen.InitializeScreen(cartridge.header->title, 1280, 720);
 
-        // Main Emulator Loop
-        while (running)
+        // Detach CPU into separate thread
+        std::thread t(&Emulator::runCPU, this);
+        t.detach();
+
+        std::cout << "CPU Detached" << std:: endl;
+
+        while(!exit)
         {
-            // poll for events
-            SDL_Event event;
-            while (SDL_PollEvent(&event))
-            {
-                if (event.type == SDL_EVENT_QUIT)
-                {
-                    running = false;
-                }
-            }
-
+            screen.pollForEvents();
         }
         return 0;
     }

@@ -20,6 +20,14 @@ namespace GBEmu
 
         public:
 
+        ~cart()
+        {
+            std::cout << "Freeing Rom Data" << std::endl;
+            delete[] cart_romdata;
+            // std::cout << "Freeing Header Data" << std::endl;
+            // delete header;
+        };
+
         struct cart_header
         {
             u8 entry[4];
@@ -49,7 +57,7 @@ namespace GBEmu
         //Read a byte from the ROM
         u8 read(u16 addr);
         //Write a byte to the ROM
-        u8 write(u16 addr, u8 data);
+        void write(u16 addr, u8 data);
 
         void connectCartridge(Emulator* emu);
 

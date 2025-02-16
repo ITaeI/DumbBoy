@@ -16,14 +16,116 @@ namespace GBEmu
     {
         if (addr < 0x8000)
         {
+            //Rom Data
+            return Emu->cartridge.read(addr); 
+        }
+        else if (addr < 0xA000 )
+        {
+            //Char Map Data
+            std::cout << "Char Map Data" << std::endl;
+            NO_IMPL
+        }
+        else if (addr < 0xC000)
+        {
+            //Cartridge Ram
             return Emu->cartridge.read(addr);
         }
-        return 0x00;
+        else if (addr < 0xE000)
+        {
+           //Working Ram 
+           return Emu->systemRam.read_wram(addr);
+        }
+        else if (addr < 0xFE00)
+        {
+            // Echo Ram
+            std::cout << "Echo Ram" << std::endl;
+            NO_IMPL
+        }
+        else if (addr < 0xFEA0)
+        {
+            //OAM
+            std::cout << "OAM" << std::endl;
+            NO_IMPL
+        }
+        else if (addr < 0xFF00)
+        {
+            //reserved unusable
+            std::cout << "Unusable" << std::endl;
+            NO_IMPL
+        }
+        else if (addr < 0xFF80)
+        {
+            // IO Registers
+            std::cout << "IO Registers" << std::endl;
+            NO_IMPL
+        }
+        else if (addr == 0xFFFF)
+        {
+            //CPU Enable Register
+            return Emu->processor.IE.read();
+        }
+        else
+        {
+            return Emu->systemRam.read_hram(addr);
+        }
     }
 
-    u8 bus::write(u16 addr, u8 data)
+    void bus::write(u16 addr, u8 data)
     {
-        return Emu->cartridge.write(addr, data);
+        if (addr < 0x8000)
+        {
+            Emu->cartridge.write(addr, data);
+        }
+        else if (addr < 0xA000 )
+        {
+            //Char Map Data
+            std::cout << "Char Map Data" << std::endl;
+            NO_IMPL
+        }
+        else if (addr < 0xC000)
+        {
+            //Cartridge Ram
+            Emu->cartridge.write(addr, data);
+        }
+        else if (addr < 0xE000)
+        {
+           //Working Ram
+           Emu->systemRam.write_wram(addr,data);
+        }
+        else if (addr < 0xFE00)
+        {
+            // Echo Ram
+            std::cout << "Echo Ram" << std::endl;
+            NO_IMPL
+        }
+        else if (addr < 0xFEA0)
+        {
+            //OAM
+            std::cout << "OAM" << std::endl;
+            NO_IMPL
+        }
+        else if (addr < 0xFF00)
+        {
+            //reserved unusable
+            std::cout << "Unusable" << std::endl;
+            NO_IMPL
+        }
+        else if (addr < 0xFF80)
+        {
+            // IO Registers
+            std::cout << "IO Registers" << std::endl;
+            NO_IMPL
+        }
+        else if (addr == 0xFFFF)
+        {
+            //CPU Enable Register
+            Emu->processor.IE.write(data);
+        }
+        else
+        {
+            // High Ram (between 0xFFFF and 0xFF80)
+            Emu->systemRam.write_hram(addr,data);
+        }
         
     }
 }

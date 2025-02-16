@@ -4,6 +4,7 @@
 #include "cart.h"
 #include "cpu.h"
 #include "bus.h"
+#include "ram.h"
 
 namespace GBEmu
 {
@@ -17,16 +18,21 @@ namespace GBEmu
         cpu processor;
         cart cartridge;
         bus systemBus;
+        RAM systemRam;
+        Screen screen;
+
 
         // Emulator Constructor
         Emulator();
 
         // Emulator Context
         bool paused;
-        bool running;
+        bool running = true;
+        bool exit = false;
         u64 ticks;
 
 
         int run();
+        int runCPU();
     };
 }
