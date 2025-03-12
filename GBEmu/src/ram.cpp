@@ -17,6 +17,7 @@ namespace GBEmu
     void RAM::write_wram(u16 adress, u8 data)
     {
         wram[adress - 0xC000] = data;
+        
     }
 
     u8 RAM::read_hram(u16 adress)
@@ -26,7 +27,7 @@ namespace GBEmu
 
     void RAM::write_hram(u16 adress, u8 data)
     {
-        wram[adress-0xFF80] = data;
+        hram[adress-0xFF80] = data;
     }
 }
 

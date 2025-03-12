@@ -1,18 +1,18 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(GBEmu)
+project(GBEmu) 
 
 set(CMAKE_CXX_STANDARD 17)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
 
-set(EXECUTABLE_NAME ${PROJECT_NAME})
+set(EXECUTABLE_NAME ${PROJECT_NAME}) 
 
 add_executable(${EXECUTABLE_NAME})   
  
 file(GLOB SOURCES "src/*.cpp")
-target_sources(${EXECUTABLE_NAME} PRIVATE ${SOURCES}) 
+target_sources(${EXECUTABLE_NAME} PRIVATE ${SOURCES})  
  
 add_subdirectory(ThirdParty/SDL)   
   

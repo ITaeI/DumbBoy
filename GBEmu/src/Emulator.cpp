@@ -20,6 +20,7 @@ namespace GBEmu
         cartridge.connectCartridge(this);
         systemRam.connectRAM(this);
         screen.connectScreen(this);
+        io.connectIO(this);
     }
 
     int Emulator::runCPU()
@@ -27,7 +28,7 @@ namespace GBEmu
         //Intialize the processor(cpu)
         processor.init();
 
-        while (running || !exit)
+        while (running && !exit)
         {
 
             if(!processor.step())
@@ -36,20 +37,24 @@ namespace GBEmu
             }
 
         }
+
         return 0;
     }
 
     int Emulator::run()
     {
         // Load Rom Cartridge
-        cartridge.cart_load("Super Mario Land (JUE) (V1.1) [!].gb");
+        cartridge.cart_load("01-special.gb");
+        //cartridge.cart_load("08-misc instrs.gb");
+        //cartridge.cart_load("07-jr,jp,call,ret,rst.gb");
+        //cartridge.cart_load("06-ld r,r.gb");
+        //cartridge.cart_load("cpu_instrs.gb");
 
         // Initialize the Screen
         screen.InitializeScreen(cartridge.header->title, 1280, 720);
 
-        // Detach CPU into separate thread
+        // run CPU on a separate thread
         std::thread t(&Emulator::runCPU, this);
-        t.detach();
 
         std::cout << "CPU Detached" << std:: endl;
 
@@ -57,6 +62,9 @@ namespace GBEmu
         {
             screen.pollForEvents();
         }
+
+
+        t.join();
         return 0;
     }
 }

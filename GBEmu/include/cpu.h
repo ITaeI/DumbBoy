@@ -77,8 +77,8 @@ namespace GBEmu
 
         void HandleInterrupts();
 
-
-
+        // Debug Stuff
+        std::string DBG;
         // Instructions
 
         // Possible reorganize these to make it more modular
@@ -114,7 +114,9 @@ namespace GBEmu
         void LD_R16_u16(Register16Bit& RegDest);
         void LD_u16_SP();
         void LD_SP_HL();
+        void PUSH_AF();
         void PUSH_R16(Register16Bit& RegSource);
+        void POP_AF();
         void POP_R16(Register16Bit& RegDest);
         void LD_HL_SP_E();
         void ADD_R8(Register8Bit& RegSource);
@@ -147,7 +149,7 @@ namespace GBEmu
         void XOR_u8();
         void CCF();
         void SCF();
-        void DAA(Register8Bit& RegSource);
+        void DAA();
         void CPL();
         void INC_R16(Register16Bit& reg16);
         void DEC_R16(Register16Bit& Reg16);

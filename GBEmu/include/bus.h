@@ -5,6 +5,7 @@ namespace GBEmu
 {
 
     class Emulator;
+    class IO;
 
     class bus
     {

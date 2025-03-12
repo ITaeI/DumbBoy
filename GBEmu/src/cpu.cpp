@@ -9,23 +9,64 @@ namespace GBEmu
         Emu = emu;
     }
 
-
     bool cpu::step()
     {
         if(!isHalted)
         {
+            
             opcode = read_memory(reg.pc.read());
             if (opcode == 0xCB)
             {   
                 opcode = read_memory(reg.pc.read());
-                std::cout << "OpCode : " << std::hex << static_cast<int>(opcode) << std::endl;
-                std::cout << "PC : " << std::hex << reg.pc.read() << std::endl;
+                if(DBG.size() != 0)
+                {
+                    std::cout << "PC: " << std::hex << reg.pc.read() - 1 << " Opcode: " << std::hex << (int)opcode << " AF: " << std::hex << reg.af.read() << " ";
+                    std::cout << "Debug Message: " << DBG << std::endl;
+                }
+                else
+                {
+                    std::cout << "PC: " << std::hex << reg.pc.read() - 1 << " Opcode: " << std::hex << (int)opcode << " AF: " << std::hex << reg.af.read() << std::endl;
+                }
                 executeCBInstruction();
+                return 0;
             }
             else
-            {
-                std::cout << "OpCode : " << std::hex << static_cast<int>(opcode) << std::endl;
-                std::cout << "PC : " << std::hex << reg.pc.read() << std::endl;
+            {   
+                u8 temp = Emu->systemBus.read(0xFF02);
+                if(temp == 0x81)
+                {
+                    DBG.push_back((char)(Emu->systemBus.read(0xFF01)));
+                    Emu->systemBus.write(0xFF02,0x00);
+                }
+    
+                if(DBG.size() != 0)
+                {
+                    std::cout << "PC: " << std::hex << reg.pc.read() - 1 << " Opcode: " << std::hex << (int)opcode << " AF: " << std::hex << reg.af.read() << " ";
+                    std::cout << "Debug Message: " << DBG << std::endl;
+                }
+                else
+                {
+                    std::cout << "PC: " << std::hex << reg.pc.read() - 1 << " Opcode: " << std::hex << (int)opcode << " AF: " << std::hex << reg.af.read() << std::endl;
+                }
+
+                if(reg.pc.read()-1 == 0xc42F)
+                {
+                    std::cout << "Debug Hit" << std::endl;
+                }
+                if(DBG == "01-special")
+                {
+                    std::cout << "Debug Hit" << std::endl;
+                }
+    
+                // if(reg.pc.read() == 0xC003)
+                // {
+                //     std::cout<< "BLAH" << std::endl;
+                // }
+                
+                // if(DBG == "cpu_instrs.gb")
+                // {
+                //     std::cout << "Finished Inputting Name" << std::endl;
+                // }
                 executeInstruction();
             }
             return 0;
@@ -87,12 +128,13 @@ namespace GBEmu
 
     void cpu::init()
     {
-        reg.af.write(0x01B0);
+        reg.af.write(0x0180);
         reg.bc.write(0x0013);
         reg.de.write(0x00D8);
         reg.hl.write(0x014D);
         reg.pc.write(0x0100);
         reg.sp.write(0xFFFE);
+
 
         isHalted = false;
         IME = 0;
@@ -100,7 +142,9 @@ namespace GBEmu
     }
 
     u8 cpu::read_memory(u16 addr)
-    {   u8 mem = Emu->systemBus.read(addr);
+    {   
+
+        u8 mem = Emu->systemBus.read(addr);
         if (addr == reg.pc.read())
         {
             reg.pc.Increment();
@@ -111,8 +155,7 @@ namespace GBEmu
 
 
     void cpu::write_memory(u16 addr, u8 data)
-    {   std::cout << currentInstruction.mnemonic << std::endl;
-        std::cout << (int)addr << std::endl;
+    {   
         Emu->systemBus.write(addr, data);
     }
 
@@ -137,16 +180,18 @@ namespace GBEmu
         reg.af.getLowByte().setBit(N,n);
         reg.af.getLowByte().setBit(H,h);
         reg.af.getLowByte().setBit(C,c);
+
     }
     u8 cpu::getFlag(int FlagValue)
     {
-        return reg.af.getLowByte().readBit(FlagValue);
+        u8 flag = reg.af.getLowByte().readBit(FlagValue);
+        return flag;
     }
 
     bool cpu::HalfCarry8Bit(u8 n1, u8 n2, bool subtraction, bool signPos)
     {   
         if (!signPos) {  n2 = ~(n2) + 1; subtraction = !subtraction;}
-        bool b = subtraction ? (n1&0x0F - n2&0x0F) < 0 : (n1&0x0F + n2&0x0F) > 0x0F;
+        bool b = subtraction ? ((n1 & 0x0F) - (n2 & 0x0F)) < 0 : ((n1 & 0x0F) + (n2 & 0x0F)) > 0x0F;
         return b;
     }
 
@@ -160,7 +205,7 @@ namespace GBEmu
     bool cpu::HalfCarry16bit(u16 n1, u16 n2, bool subtraction, bool signPos)
     {
         if (!signPos) {  n2 = ~(n2) + 1; subtraction = !subtraction;}
-        bool b = subtraction ? (n1&0xFFF - n2&0xFFF) < 0 : (n1&0xFFF + n2&0xFFF) > 0xFFF;
+        bool b = subtraction ? ((n1 & 0x0FFF) - (n2 & 0x0FFF)) < 0 : ((n1 & 0x0FFF) + (n2 & 0x0FFF)) > 0x0FFF;
         return b;
     }
     bool cpu::Carry16bit(u16 n1, u16 n2, bool subtraction, bool signPos)
@@ -441,10 +486,10 @@ namespace GBEmu
             case 0x00: currentInstruction = Instruction("NOP",1,4); NOP(); break;
             case 0x01: currentInstruction = Instruction("LD BC, U16", 3, 12); LD_R16_u16(reg.bc); break;
             case 0x02: currentInstruction = Instruction("LD BC, A",1,8); LD_BC_A(); break;
-            case 0x03: currentInstruction = Instruction("INC B",1,4); INC_R8(reg.bc.getHighByte()); break;
-            case 0x04: currentInstruction = Instruction("DEC B",1,4); DEC_R8(reg.bc.getHighByte()); break;
-            case 0x05: currentInstruction = Instruction("LD B, u8",2,8); LD_R8_u8(reg.bc.getHighByte()); break;
-            case 0x06: currentInstruction = Instruction("LD B, u8", 2, 8); LD_R8_u8(reg.bc.getLowByte()); break;
+            case 0x03: currentInstruction = Instruction("INC BC",1,8); INC_R16(reg.bc); break;
+            case 0x04: currentInstruction = Instruction("INC B",1,4); INC_R8(reg.bc.getHighByte()); break;
+            case 0x05: currentInstruction = Instruction("DEC B",1,4); DEC_R8(reg.bc.getHighByte()); break;
+            case 0x06: currentInstruction = Instruction("LD B, u8",2,8); LD_R8_u8(reg.bc.getHighByte()); break;
             case 0x07: currentInstruction = Instruction("RLCA", 1, 4); RLCA(); break;
             case 0x08: currentInstruction = Instruction("LD (u16), SP", 3, 20); LD_u16_SP(); break;
             case 0x09: currentInstruction = Instruction("ADD HL, BC", 1, 8); ADD_HL_R16(reg.bc); break;
@@ -477,7 +522,7 @@ namespace GBEmu
             case 0x24: currentInstruction = Instruction("INC H", 1, 4); INC_R8(reg.hl.getHighByte()); break;
             case 0x25: currentInstruction = Instruction("DEC H", 1, 4); DEC_R8(reg.hl.getHighByte()); break;
             case 0x26: currentInstruction = Instruction("LD H, u8", 2, 8); LD_R8_u8(reg.hl.getHighByte()); break;
-            case 0x27: currentInstruction = Instruction("DAA", 1, 4); DAA(reg.af.getHighByte()); break;
+            case 0x27: currentInstruction = Instruction("DAA", 1, 4); DAA(); break;
             case 0x28: currentInstruction = Instruction("JR Z, e", 2, 12); JR_CC_E(getFlag(Z)); break;
             case 0x29: currentInstruction = Instruction("ADD HL, HL", 1, 8); ADD_HL_R16(reg.hl); break;
             case 0x2A: currentInstruction = Instruction("LD A, (HL+)", 1, 8); LD_A_HL_INC(); break;
@@ -679,11 +724,11 @@ namespace GBEmu
             case 0xEE: currentInstruction = Instruction("XOR u8", 2, 8); XOR_u8(); break;
             case 0xEF: currentInstruction = Instruction("RST 28H", 1, 16); RST_u8(0x28); break;
             case 0xF0: currentInstruction = Instruction("LDH A, (u8)", 2, 12); LDH_A_u8(); break;
-            case 0xF1: currentInstruction = Instruction("POP AF", 1, 12); POP_R16(reg.af); break;
+            case 0xF1: currentInstruction = Instruction("POP AF", 1, 12); POP_AF(); break;
             case 0xF2: currentInstruction = Instruction("LDH A, (C)", 1, 8); LDH_A_C(); break;
             case 0xF3: currentInstruction = Instruction("DI", 1, 4); DI(); break;
             case 0xF4: /* Implement instruction */ break;
-            case 0xF5: currentInstruction = Instruction("PUSH AF", 1, 16); PUSH_R16(reg.af); break;
+            case 0xF5: currentInstruction = Instruction("PUSH AF", 1, 16); PUSH_AF(); break;
             case 0xF6: currentInstruction = Instruction("OR u8", 2, 8); OR_u8(); break;
             case 0xF7: currentInstruction = Instruction("RST 30H", 1, 16); RST_u8(0x30); break;
             case 0xF8: currentInstruction = Instruction("LD HL, SP+e", 2, 12); LD_HL_SP_E(); break;
@@ -696,7 +741,7 @@ namespace GBEmu
             case 0xFF: currentInstruction = Instruction("RST 38H", 1, 16); RST_u8(0x38); break;
             default: isHalted = true; break;
         }
-        std::cout<< currentInstruction.mnemonic << std::endl;
+        //std::cout<< currentInstruction.mnemonic << std::endl;
 
     };
     
@@ -710,7 +755,8 @@ namespace GBEmu
     // load a 8 bit value into a 8 bit register
     void cpu::LD_R8_u8(Register8Bit &RegDest)
     {
-        RegDest.write(read_memory(reg.pc.read()));
+        u8 n = read_memory(reg.pc.read());
+        RegDest.write(n);
     }
 
     // load a 8 bit value from adress HL into a 8 bit register
@@ -834,6 +880,14 @@ namespace GBEmu
         reg.sp.write(reg.hl.read());
     }
 
+    void cpu::PUSH_AF()
+    {
+        reg.sp.Decrement();
+        write_memory(reg.sp.read(), reg.af.getHighByte().read());
+        reg.sp.Decrement();
+        write_memory(reg.sp.read(), reg.af.getLowByte().read() & 0xF0); 
+    }
+
     void cpu::PUSH_R16(Register16Bit& RegSource)
     {
         reg.sp.Decrement();
@@ -842,12 +896,21 @@ namespace GBEmu
         write_memory(reg.sp.read(), RegSource.getLowByte().read());
     }
 
+    void cpu::POP_AF()
+    {
+        reg.af.getLowByte().write(read_memory(reg.sp.read()) & 0xF0);
+        reg.sp.Increment();
+        reg.af.getHighByte().write(read_memory(reg.sp.read()));
+        reg.sp.Increment(); 
+    }
+
     void cpu::POP_R16(Register16Bit& RegDest)
     {
-        RegDest.getLowByte().write(read_memory(reg.pc.read()));
-        reg.pc.Increment();
-        RegDest.getLowByte().write(read_memory(reg.pc.read()));
-        reg.pc.Increment();
+        RegDest.getLowByte().write(read_memory(reg.sp.read()));
+        reg.sp.Increment();
+        RegDest.getHighByte().write(read_memory(reg.sp.read()));
+        reg.sp.Increment();
+
     }
 
     void cpu::LD_HL_SP_E()
@@ -988,8 +1051,8 @@ namespace GBEmu
         setFlags(
         result == 0,
         1, 
-        HalfCarry8Bit(reg.af.getHighByte().read(), n, false, true), 
-        Carry8Bit(reg.af.getHighByte().read(), n, false, true)
+        HalfCarry8Bit(reg.af.getHighByte().read(), n, true, true), 
+        Carry8Bit(reg.af.getHighByte().read(), n, true, true)
         );
 
         reg.af.getHighByte().write(result);
@@ -1074,32 +1137,32 @@ namespace GBEmu
         setFlags(
         result == 0,
         1, 
-        HalfCarry8Bit(reg.af.getHighByte().read(), n, false, true), 
-        Carry8Bit(reg.af.getHighByte().read(), n, false, true)
+        HalfCarry8Bit(reg.af.getHighByte().read(), n, true, true), 
+        Carry8Bit(reg.af.getHighByte().read(), n, true, true)
         );
     }
 
     void cpu::INC_R8(Register8Bit& Reg8)
     {
-        setFlags(Reg8.read()+1 == 0, 0, HalfCarry8Bit(Reg8.read(),1,false,true), getFlag(C));
+        setFlags((u8)(Reg8.read()+1) == 0, 0, HalfCarry8Bit(Reg8.read(),1,false,true), getFlag(C));
         Reg8.Increment();
     }
 
     void cpu::INC_HL()
     {
-        setFlags(reg.hl.read()+1 == 0, 0, HalfCarry8Bit(reg.hl.read(),1,false,true), getFlag(C));
+        setFlags((u16)(reg.hl.read()+1) == 0, 0, HalfCarry8Bit(reg.hl.read(),1,false,true), getFlag(C));
         reg.hl.Increment();
     }
 
     void cpu::DEC_R8(Register8Bit& Reg8)
     {
-        setFlags(Reg8.read()-1 == 0, 1, HalfCarry8Bit(Reg8.read(),1,true,true), getFlag(C));
+        setFlags((u8)(Reg8.read()-1) == 0, 1, HalfCarry8Bit(Reg8.read(),1,true,true), getFlag(C));
         Reg8.Decrement();
     }
 
     void cpu::DEC_HL()
     {
-        setFlags(reg.hl.read()-1 == 0, 1, HalfCarry8Bit(reg.hl.read(),1,true,true), getFlag(C));
+        setFlags((u16)(reg.hl.read()-1) == 0, 1, HalfCarry8Bit(reg.hl.read(),1,true,true), getFlag(C));
         reg.hl.Decrement();
     }
 
@@ -1255,52 +1318,30 @@ namespace GBEmu
         );
     }
 
-    void cpu::DAA(Register8Bit& RegSource)
+    void cpu::DAA()
     {
-        u8 offset = 0;
-        u8 RegValue = RegSource.read();
-
-        if (getFlag(N))
-        {
-            if(getFlag(H))
-            {
-                offset |= 0x06;
-            }
-
-            if(getFlag(C))
-            {
-                offset |= 0x60;
-            }
-
-            RegValue -= offset;
-            setFlags(
-                RegValue == 0,
-                getFlag(N),
-                0,
-                Carry8Bit(RegSource.read(), offset, true, true)
-            );
-            RegSource.write(RegValue);
+        /* https://ehaskins.com/2018-01-30%20Z80%20DAA/ */
+        uint8_t v = reg.af.getHighByte().read();
+        uint8_t n = getFlag(N);
+        uint8_t h = getFlag(H);
+        uint8_t c = getFlag(C);
+    
+        uint8_t correction = 0;
+    
+        if (h || (!n && (v & 0xf) > 9)) {
+            correction |= 0x6;
         }
-        else
-        {
-            if(RegValue & 0xF > 0x09 || getFlag(H))
-            {
-                offset |= 0x06;
-            }
-
-            if(RegValue > 0x99 || getFlag(C))
-            {
-                offset |= 0x60;
-            }
-            RegValue += offset;
-            setFlags(
-                RegValue == 0,
-                getFlag(N),
-                0,
-                Carry8Bit(RegSource.read(), offset, false, true)
-            );
-            RegSource.write(RegValue);
+    
+        if (c || (!n && v > 0x99)) {
+            correction |= 0x60;
+            setFlags(getFlag(Z), n, h, 1);
         }
+    
+        v += n ? -correction : correction;
+    
+        reg.af.getHighByte().write(v);
+        setFlags(v == 0, n, 0, getFlag(C));
+          
     }
 
     void cpu::CPL()
@@ -1700,6 +1741,7 @@ namespace GBEmu
     void cpu::JR_CC_E(bool CC)
     {
         Sint8 e = read_memory(reg.pc.read());
+
         if(CC)
         {
             reg.pc.write(reg.pc.read() + e);

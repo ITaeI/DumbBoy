@@ -37,9 +37,69 @@ namespace GBEmu
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
-            if (event.type == SDL_EVENT_QUIT)
+            switch(event.type)
             {
-                Emu->exit = true;
+                case SDL_EVENT_QUIT:
+                    Emu->exit = true;
+                    break;
+                case SDL_EVENT_KEY_DOWN:
+                    switch(event.key.scancode)
+                    {
+                        case SDL_SCANCODE_W:
+                            std::cout << "W" << std::endl;
+                            break;
+                        case SDL_SCANCODE_A:
+                            std::cout << "A" << std::endl;
+                            break;
+                        case SDL_SCANCODE_S:
+                            std::cout << "S" << std::endl;
+                            break;
+                        case SDL_SCANCODE_D:
+                            std::cout << "D" << std::endl;
+                            break;
+                    }
+                    break;
+                case SDL_EVENT_KEY_UP:
+                    switch(event.key.scancode)
+                    {
+                        case SDL_SCANCODE_W:
+                            std::cout << "W UP" << std::endl;
+                            break;
+                        case SDL_SCANCODE_A:
+                            std::cout << "A UP" << std::endl;
+                            break;
+                        case SDL_SCANCODE_S:
+                            std::cout << "S UP" << std::endl;
+                            break;
+                        case SDL_SCANCODE_D:
+                            std::cout << "D UP" << std::endl;
+                            break;
+                    }
+                    break;
+                case SDL_EVENT_MOUSE_BUTTON_DOWN:
+                    switch(event.button.button)
+                    {
+                        case SDL_BUTTON_LEFT:
+                            std::cout << "Left Mouse Down" << std::endl;
+                            break;
+                        case SDL_BUTTON_RIGHT:
+                            std::cout << "Right Mouse Down" << std::endl;
+                            break;
+                    }
+                    break;
+                
+                case SDL_EVENT_MOUSE_BUTTON_UP:
+                    switch(event.button.button)
+                    {
+                        case SDL_BUTTON_LEFT:
+                            std::cout << "Left Mouse UP" << std::endl;
+                            break;
+                        case SDL_BUTTON_RIGHT:
+                            std::cout << "Right Mouse UP" << std::endl;
+                            break;
+                    }
+                    break;
+
             }
         }
     }

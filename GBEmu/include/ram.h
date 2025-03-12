@@ -8,8 +8,8 @@ namespace GBEmu
     {
         private:
 
-        u8 wram[0x2000];
-        u8 hram[0x80];
+        u8 wram[0x2000] = {0x00};
+        u8 hram[0x80] = {0x00};
 
         Emulator *Emu;
         public:

@@ -5,6 +5,7 @@
 #include "cpu.h"
 #include "bus.h"
 #include "ram.h"
+#include "IO.h"
 
 namespace GBEmu
 {
@@ -20,6 +21,7 @@ namespace GBEmu
         bus systemBus;
         RAM systemRam;
         Screen screen;
+        IO io;
 
 
         // Emulator Constructor
