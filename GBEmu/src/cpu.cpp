@@ -191,6 +191,7 @@ namespace GBEmu
     bool cpu::HalfCarry8Bit(u8 n1, u8 n2, bool subtraction, bool signPos)
     {   
         if (!signPos) {  n2 = ~(n2) + 1; subtraction = !subtraction;}
+        if (n2 == 0) {return false;}
         bool b = subtraction ? ((n1 & 0x0F) - (n2 & 0x0F)) < 0 : ((n1 & 0x0F) + (n2 & 0x0F)) > 0x0F;
         return b;
     }
@@ -198,6 +199,7 @@ namespace GBEmu
     bool cpu::Carry8Bit(u8 n1, u8 n2,bool subtraction, bool signPos)
     {   
         if (!signPos) {  n2 = ~(n2) + 1; subtraction = !subtraction;}
+        if (n2 == 0) {return false;}
         bool b = subtraction ? n1 < n2: (n1 + n2) > 0xFF;
         return b;
     }
@@ -205,12 +207,14 @@ namespace GBEmu
     bool cpu::HalfCarry16bit(u16 n1, u16 n2, bool subtraction, bool signPos)
     {
         if (!signPos) {  n2 = ~(n2) + 1; subtraction = !subtraction;}
+        if (n2 == 0) {return false;}
         bool b = subtraction ? ((n1 & 0x0FFF) - (n2 & 0x0FFF)) < 0 : ((n1 & 0x0FFF) + (n2 & 0x0FFF)) > 0x0FFF;
         return b;
     }
     bool cpu::Carry16bit(u16 n1, u16 n2, bool subtraction, bool signPos)
     {
-        if (!signPos && subtraction) {subtraction = false;} 
+        if (!signPos && subtraction) {subtraction = false;}
+        if (n2 == 0) {return false;} 
         bool b = subtraction ? n1 < n2: (n1 + n2) > 0xFFFF;
         return b;
     }
@@ -289,7 +293,7 @@ namespace GBEmu
             case 0x42: BIT_B_R8(reg.de.getHighByte(),0); break;
             case 0x43: BIT_B_R8(reg.de.getLowByte(),0); break;
             case 0x44: BIT_B_R8(reg.hl.getHighByte(),0); break;
-            case 0x45: BIT_B_R8(reg.hl.getHighByte(),0); break;
+            case 0x45: BIT_B_R8(reg.hl.getLowByte(),0); break;
             case 0x46: BIT_B_HL(0); break;
             case 0x47: BIT_B_R8(reg.af.getHighByte(),0); break;
             case 0x48: BIT_B_R8(reg.bc.getHighByte(),1); break;
@@ -299,7 +303,7 @@ namespace GBEmu
             case 0x4C: BIT_B_R8(reg.hl.getHighByte(),1); break;
             case 0x4D: BIT_B_R8(reg.hl.getLowByte(),1);break;
             case 0x4E: BIT_B_HL(1); break;
-            case 0x4F: BIT_B_R8(reg.af.getHighByte(),2); break;
+            case 0x4F: BIT_B_R8(reg.af.getHighByte(),1); break;
             case 0x50: BIT_B_R8(reg.bc.getHighByte(),2); break;
             case 0x51: BIT_B_R8(reg.bc.getLowByte(),2); break;
             case 0x52: BIT_B_R8(reg.de.getHighByte(),2); break;
@@ -1304,7 +1308,7 @@ namespace GBEmu
             getFlag(Z),
             0,
             0,
-            ~(getFlag(C))
+            getFlag(C) ^ 1
         );
     }
 
@@ -1388,7 +1392,7 @@ namespace GBEmu
         reg.sp.write(result);
     }
 
-    // Take a look at these to make sure they look alright
+    // Take a look at these to make sure they look alright (Will do past me)
     void cpu::RLCA()
     {
         u8 b7 = reg.af.getHighByte().readBit(7);
@@ -1438,7 +1442,7 @@ namespace GBEmu
         u8 right_rotated_byte =  (getFlag(C) << 7) | (reg.af.getHighByte().read() >> 1);
         setFlags
         (
-            right_rotated_byte == 0,
+            0,
             0,
             0,
             b0
@@ -1481,7 +1485,7 @@ namespace GBEmu
         u8 right_rotated_byte =  (b0 << 7) | (reg.af.getHighByte().read() >> 1);
         setFlags
         (
-            right_rotated_byte == 0,
+            0,
             0,
             0,
             b0
@@ -1506,8 +1510,8 @@ namespace GBEmu
     void cpu::RL_HL()
     {
         u8 n = read_memory(reg.hl.read());
-        u8 b7 = n&0x80;
-        u8 left_rotated_byte = n&0x7F << 1 | getFlag(C);
+        u8 b7 = (n & 0x80) >> 7;
+        u8 left_rotated_byte = (n << 1) | getFlag(C);
         setFlags
         (
             left_rotated_byte == 0,
@@ -1521,10 +1525,10 @@ namespace GBEmu
     void cpu::RLA()
     {
         u8 b7 = reg.af.getHighByte().readBit(7);
-        u8 left_rotated_byte = reg.af.getHighByte().read() << 1 | getFlag(C);
+        u8 left_rotated_byte = (reg.af.getHighByte().read() << 1) | getFlag(C);
         setFlags
         (
-            left_rotated_byte == 0,
+            0,
             0,
             0,
             b7
@@ -1549,8 +1553,8 @@ namespace GBEmu
     void cpu::RLC_HL()
     {
         u8 n = read_memory(reg.hl.read());
-        u8 b7 = n&0x80;
-        u8 left_rotated_byte = n&0x7F << 1 | b7;
+        u8 b7 = (n >> 7) & 0x1;
+        u8 left_rotated_byte = (n << 1) | b7;
         setFlags
         (
             left_rotated_byte == 0,
@@ -1564,7 +1568,7 @@ namespace GBEmu
     void cpu::SLA_R8(Register8Bit& RegSource)
     {
         u8 b7 = RegSource.readBit(7);
-        u8 left_rotated_byte = RegSource.read()&0x7F << 1;
+        u8 left_rotated_byte = (RegSource.read() << 1) & 0xFE;
         setFlags
         (
             left_rotated_byte == 0,
@@ -1578,8 +1582,8 @@ namespace GBEmu
     void cpu::SLA_HL()
     {
         u8 n = read_memory(reg.hl.read());
-        u8 b7 = n&0x80;
-        u8 left_rotated_byte = n&0x7F << 1;
+        u8 b7 = (n >> 7) & 0x1;
+        u8 left_rotated_byte = (n << 1) & 0xFE;
         setFlags
         (
             left_rotated_byte == 0,
@@ -1592,7 +1596,7 @@ namespace GBEmu
 
     void cpu::SRA_R8(Register8Bit& RegSource)
     {
-        u8 b7 = RegSource.readBit(7);
+        u8 b7 = RegSource.readBit(7) << 7;
         u8 b0 = RegSource.readBit(0);
         u8 right_rotated_byte = b7 | RegSource.read() >> 1;
         setFlags
@@ -1608,7 +1612,7 @@ namespace GBEmu
     void cpu::SRA_HL()
     {
         u8 n = (reg.hl.read());
-        u8 b7 = n&0x80;
+        u8 b7 = n & 0x80;
         u8 b0 = n&0x01;
         u8 right_rotated_byte = b7 | n >> 1;
         setFlags
@@ -1626,7 +1630,7 @@ namespace GBEmu
     void cpu::SRL_R8(Register8Bit& RegSource)
     {
         u8 b0 = RegSource.readBit(0);
-        u8 right_rotated_byte = RegSource.read()&0x7F >> 1;
+        u8 right_rotated_byte = RegSource.read() >> 1;
         setFlags
         (
             right_rotated_byte == 0,
@@ -1641,7 +1645,7 @@ namespace GBEmu
     {
         u8 n = (reg.hl.read());
         u8 b0 = n&0x01;
-        u8 right_rotated_byte = n&0x7F >> 1;
+        u8 right_rotated_byte = n >> 1;
         setFlags
         (
             right_rotated_byte == 0,
@@ -1655,13 +1659,27 @@ namespace GBEmu
 
     void cpu::SWAP_R8(Register8Bit& RegSource)
     {
-        RegSource.write((RegSource.read()&0x0F << 4) | (RegSource.read()&0xF0 >> 4)); 
+        u8 temp = RegSource.read();
+        RegSource.write(((temp&0x0F) << 4) | ((temp&0xF0) >> 4)); 
+        setFlags(
+            RegSource.read() == 0,
+            0,
+            0,
+            0
+        );
     }
 
     void cpu::SWAP_HL()
     {
         u8 n = read_memory(reg.hl.read());
-        write_memory(reg.hl.read(), (n&0x0F << 4) | (n&0xF0 >> 4));
+        u8 swap = ((n&0x0F) << 4) | ((n&0xF0) >> 4);
+        write_memory(reg.hl.read(), swap);
+        setFlags(
+            (swap == 0),
+            0,
+            0,
+            0
+        );
     }
 
     void cpu::BIT_B_R8(Register8Bit& RegSource, u8 bit)
