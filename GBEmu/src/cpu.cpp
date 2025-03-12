@@ -1679,7 +1679,7 @@ namespace GBEmu
         u8 n = read_memory(reg.hl.read());
         setFlags
         (
-            (n >> bit)&0x01 == 0,
+            ((n >> bit)&0x01) == 0,
             0,
             1,
             getFlag(C)
