@@ -17,4 +17,4 @@ target_sources(${EXECUTABLE_NAME} PRIVATE ${SOURCES})
 add_subdirectory(ThirdParty/SDL)   
   
 target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/include")
-target_link_libraries(${EXECUTABLE_NAME} PRIVATE SDL3::SDL3)   
+target_link_libraries(${EXECUTABLE_NAME} PRIVATE SDL3::SDL3)  

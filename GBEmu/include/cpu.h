@@ -45,11 +45,11 @@ namespace GBEmu
         void setFlags(bool Z, bool N, bool H, bool C);
         u8 getFlag(int FlagValue);
 
-        bool HalfCarry8Bit(u8 n1, u8 n2,bool subtraction, bool signPos);
-        bool Carry8Bit(u8 n1, u8 n2,bool subtraction, bool signPos);
+        bool HalfCarry8Bit(u8 n1, u8 n2,bool subtraction);
+        bool Carry8Bit(u8 n1, u8 n2,bool subtraction);
 
-        bool HalfCarry16bit(u16 n1, u16 n2,bool subtraction, bool signPos);
-        bool Carry16bit(u16 n1, u16 n2,bool subtraction, bool signPos);
+        bool HalfCarry16bit(u16 n1, u16 n2,bool subtraction);
+        bool Carry16bit(u16 n1, u16 n2,bool subtraction);
 
         //current fetch
         u8 fetch;
@@ -73,6 +73,7 @@ namespace GBEmu
         // Interrupts
         Register8Bit IE;
         Register8Bit IF;
+        bool enablingIME;
         bool IME;
 
         void HandleInterrupts();

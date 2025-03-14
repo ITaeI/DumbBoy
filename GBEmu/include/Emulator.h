@@ -6,6 +6,7 @@
 #include "bus.h"
 #include "ram.h"
 #include "IO.h"
+#include "timer.h"
 
 namespace GBEmu
 {
@@ -22,6 +23,7 @@ namespace GBEmu
         RAM systemRam;
         Screen screen;
         IO io;
+        EmuTimer timer;
 
 
         // Emulator Constructor

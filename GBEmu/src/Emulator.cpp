@@ -44,11 +44,18 @@ namespace GBEmu
     int Emulator::run()
     {
         // Load Rom Cartridge
-        cartridge.cart_load("01-special.gb");
-        //cartridge.cart_load("08-misc instrs.gb");
-        //cartridge.cart_load("07-jr,jp,call,ret,rst.gb");
-        //cartridge.cart_load("06-ld r,r.gb");
-        //cartridge.cart_load("cpu_instrs.gb");
+        //cartridge.cart_load("01-special.gb"); //Passed
+        cartridge.cart_load("02-interrupts.gb");
+        //cartridge.cart_load("08-misc instrs.gb"); //Passed
+        //cartridge.cart_load("07-jr,jp,call,ret,rst.gb"); //Passed
+        //cartridge.cart_load("06-ld r,r.gb");//Passed
+        //cartridge.cart_load("03-op sp,hl.gb"); // Passed
+        //cartridge.cart_load("04-op r,imm.gb"); // Passed
+        //cartridge.cart_load("05-op rp.gb"); // Passed
+        //cartridge.cart_load("09-op r,r.gb"); // Passed
+        //cartridge.cart_load("10-bit ops.gb"); // Passed
+        //cartridge.cart_load("11-op a,(hl).gb"); // Passed
+        //cartridge.cart_load("cpu_instrs.gb"); //Unsure
 
         // Initialize the Screen
         screen.InitializeScreen(cartridge.header->title, 1280, 720);

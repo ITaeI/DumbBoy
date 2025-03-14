@@ -18,17 +18,16 @@ namespace GBEmu
             if (opcode == 0xCB)
             {   
                 opcode = read_memory(reg.pc.read());
-                if(DBG.size() != 0)
-                {
-                    std::cout << "PC: " << std::hex << reg.pc.read() - 1 << " Opcode: " << std::hex << (int)opcode << " AF: " << std::hex << reg.af.read() << " ";
-                    std::cout << "Debug Message: " << DBG << std::endl;
-                }
-                else
-                {
-                    std::cout << "PC: " << std::hex << reg.pc.read() - 1 << " Opcode: " << std::hex << (int)opcode << " AF: " << std::hex << reg.af.read() << std::endl;
-                }
+                // if(DBG.size() != 0)
+                // {
+                //     std::cout << "PC: " << std::hex << reg.pc.read() - 1 << " Opcode: " << std::hex << (int)opcode << " AF: " << std::hex << reg.af.read() << " ";
+                //     std::cout << "Debug Message: " << DBG << std::endl;
+                // }
+                // else
+                // {
+                //     std::cout << "PC: " << std::hex << reg.pc.read() - 1 << " Opcode: " << std::hex << (int)opcode << " AF: " << std::hex << reg.af.read() << std::endl;
+                // }
                 executeCBInstruction();
-                return 0;
             }
             else
             {   
@@ -37,17 +36,23 @@ namespace GBEmu
                 {
                     DBG.push_back((char)(Emu->systemBus.read(0xFF01)));
                     Emu->systemBus.write(0xFF02,0x00);
-                }
-    
-                if(DBG.size() != 0)
-                {
-                    std::cout << "PC: " << std::hex << reg.pc.read() - 1 << " Opcode: " << std::hex << (int)opcode << " AF: " << std::hex << reg.af.read() << " ";
                     std::cout << "Debug Message: " << DBG << std::endl;
                 }
-                else
+
+                if(opcode == 0xCB)
                 {
-                    std::cout << "PC: " << std::hex << reg.pc.read() - 1 << " Opcode: " << std::hex << (int)opcode << " AF: " << std::hex << reg.af.read() << std::endl;
+                    std::cout << "CB Hit" << std::endl;
                 }
+    
+                // if(DBG.size() != 0)
+                // {
+                //     std::cout << "PC: " << std::hex << reg.pc.read() - 1 << " Opcode: " << std::hex << (int)opcode << " AF: " << std::hex << reg.af.read() << " ";
+                //     std::cout << "Debug Message: " << DBG << std::endl;
+                // }
+                // else
+                // {
+                //     std::cout << "PC: " << std::hex << reg.pc.read() - 1 << " Opcode: " << std::hex << (int)opcode << " AF: " << std::hex << reg.af.read() << std::endl;
+                // }
 
                 if(reg.pc.read()-1 == 0xc42F)
                 {
@@ -58,18 +63,8 @@ namespace GBEmu
                     std::cout << "Debug Hit" << std::endl;
                 }
     
-                // if(reg.pc.read() == 0xC003)
-                // {
-                //     std::cout<< "BLAH" << std::endl;
-                // }
-                
-                // if(DBG == "cpu_instrs.gb")
-                // {
-                //     std::cout << "Finished Inputting Name" << std::endl;
-                // }
                 executeInstruction();
             }
-            return 0;
         }
         else{
 
@@ -80,11 +75,17 @@ namespace GBEmu
             
         }
 
-        if (IME)
+        if(IME)
         {
             HandleInterrupts();
+            enablingIME = false;
         }
-        return 1;
+
+        if (enablingIME)
+        {
+            IME = true;
+        }
+        return 0;
     }
 
     void cpu::HandleInterrupts()
@@ -188,36 +189,33 @@ namespace GBEmu
         return flag;
     }
 
-    bool cpu::HalfCarry8Bit(u8 n1, u8 n2, bool subtraction, bool signPos)
+    bool cpu::HalfCarry8Bit(u8 n1, u8 n2, bool subtraction)
     {   
-        if (!signPos) {  n2 = ~(n2) + 1; subtraction = !subtraction;}
-        if (n2 == 0) {return false;}
+
         bool b = subtraction ? ((n1 & 0x0F) - (n2 & 0x0F)) < 0 : ((n1 & 0x0F) + (n2 & 0x0F)) > 0x0F;
         return b;
     }
 
-    bool cpu::Carry8Bit(u8 n1, u8 n2,bool subtraction, bool signPos)
+    bool cpu::Carry8Bit(u8 n1, u8 n2,bool subtraction)
     {   
-        if (!signPos) {  n2 = ~(n2) + 1; subtraction = !subtraction;}
-        if (n2 == 0) {return false;}
+
         bool b = subtraction ? n1 < n2: (n1 + n2) > 0xFF;
         return b;
     }
 
-    bool cpu::HalfCarry16bit(u16 n1, u16 n2, bool subtraction, bool signPos)
+    bool cpu::HalfCarry16bit(u16 n1, u16 n2, bool subtraction)
     {
-        if (!signPos) {  n2 = ~(n2) + 1; subtraction = !subtraction;}
-        if (n2 == 0) {return false;}
+
         bool b = subtraction ? ((n1 & 0x0FFF) - (n2 & 0x0FFF)) < 0 : ((n1 & 0x0FFF) + (n2 & 0x0FFF)) > 0x0FFF;
         return b;
     }
-    bool cpu::Carry16bit(u16 n1, u16 n2, bool subtraction, bool signPos)
+    bool cpu::Carry16bit(u16 n1, u16 n2, bool subtraction)
     {
-        if (!signPos && subtraction) {subtraction = false;}
-        if (n2 == 0) {return false;} 
+
         bool b = subtraction ? n1 < n2: (n1 + n2) > 0xFFFF;
         return b;
     }
+
 
     void cpu::executeCBInstruction()
     {
@@ -690,7 +688,7 @@ namespace GBEmu
             case 0xC8: currentInstruction = Instruction("RET Z", 1, 8); RET_CC(getFlag(Z)); break;
             case 0xC9: currentInstruction = Instruction("RET", 1, 16); RET(); break;
             case 0xCA: currentInstruction = Instruction("JP Z, u16", 3, 12); JP_CC_u16(getFlag(Z)); break;
-            case 0xCB: executeCBInstruction(); break;
+            case 0xCB: /*  */ break;
             case 0xCC: currentInstruction = Instruction("CALL Z, u16", 3, 12); CALL_CC_u16(getFlag(Z)); break;
             case 0xCD: currentInstruction = Instruction("CALL u16", 3, 24); CALL_u16(); break;
             case 0xCE: currentInstruction = Instruction("ADC A, u8", 2, 8); ADC_u8(); break;
@@ -920,16 +918,16 @@ namespace GBEmu
     void cpu::LD_HL_SP_E()
     {
         Sint8 e = read_memory(reg.pc.read());
-
+        u16 result = reg.sp.read() + e;
         // Set Flags
         setFlags(
         0,
         0, 
-        HalfCarry8Bit(reg.sp.read()&0xFF, e, false, e>0), 
-        Carry8Bit(reg.sp.read()&0xFF, e, false, e>0)
+        HalfCarry8Bit(reg.sp.read()&0xFF, e, false), 
+        Carry8Bit(reg.sp.read()&0xFF, e, false)
         );
 
-        reg.hl.write(reg.sp.read() + e);
+        reg.hl.write(result);
     }
 
     void cpu::ADD_R8(Register8Bit& RegSource)
@@ -938,8 +936,8 @@ namespace GBEmu
         setFlags(
         result == 0,
         0, 
-        HalfCarry8Bit(reg.af.getHighByte().read(), RegSource.read(), false, true), 
-        Carry8Bit(reg.af.getHighByte().read(), RegSource.read(), false, true)
+        HalfCarry8Bit(reg.af.getHighByte().read(), RegSource.read(), false), 
+        Carry8Bit(reg.af.getHighByte().read(), RegSource.read(), false)
         );
         reg.af.getHighByte().write(result);
     }
@@ -952,8 +950,8 @@ namespace GBEmu
         setFlags(
         result == 0,
         0, 
-        HalfCarry8Bit(reg.af.getHighByte().read(), n, false, true), 
-        Carry8Bit(reg.af.getHighByte().read(), n, false, true)
+        HalfCarry8Bit(reg.af.getHighByte().read(), n, false), 
+        Carry8Bit(reg.af.getHighByte().read(), n, false)
         );
 
         reg.af.getHighByte().write(result);
@@ -968,8 +966,8 @@ namespace GBEmu
         setFlags(
         result == 0,
         0, 
-        HalfCarry8Bit(reg.af.getHighByte().read(), n, false, true), 
-        Carry8Bit(reg.af.getHighByte().read(), n, false, true)
+        HalfCarry8Bit(reg.af.getHighByte().read(), n, false), 
+        Carry8Bit(reg.af.getHighByte().read(), n, false)
         );
 
         reg.af.getHighByte().write(result);
@@ -981,8 +979,8 @@ namespace GBEmu
         setFlags(
         result == 0,
         0, 
-        HalfCarry8Bit(reg.af.getHighByte().read(), RegSource.read() + getFlag(C), false, true), 
-        Carry8Bit(reg.af.getHighByte().read(), RegSource.read() + getFlag(C), false, true)
+        HalfCarry8Bit(reg.af.getHighByte().read(), RegSource.read(), false) || HalfCarry8Bit(reg.af.getHighByte().read() + RegSource.read(), getFlag(C), false),  
+        Carry8Bit(reg.af.getHighByte().read(), RegSource.read(), false) ||  Carry8Bit(reg.af.getHighByte().read() + RegSource.read(), getFlag(C), false)
         );
         reg.af.getHighByte().write(result);
     }
@@ -995,8 +993,8 @@ namespace GBEmu
         setFlags(
         result == 0,
         0, 
-        HalfCarry8Bit(reg.af.getHighByte().read(), n + getFlag(C), false, true), 
-        Carry8Bit(reg.af.getHighByte().read(), n + getFlag(C), false, true)
+        HalfCarry8Bit(reg.af.getHighByte().read(), n, false) || HalfCarry8Bit(reg.af.getHighByte().read() + n, getFlag(C), false), 
+        Carry8Bit(reg.af.getHighByte().read(), n, false) || Carry8Bit(reg.af.getHighByte().read() + n, getFlag(C), false )
         );
 
         reg.af.getHighByte().write(result);
@@ -1011,8 +1009,8 @@ namespace GBEmu
         setFlags(
         result == 0,
         0, 
-        HalfCarry8Bit(reg.af.getHighByte().read(), n + getFlag(C), false, true), 
-        Carry8Bit(reg.af.getHighByte().read(), n + getFlag(C), false, true)
+        HalfCarry8Bit(reg.af.getHighByte().read(), n , false) || HalfCarry8Bit(reg.af.getHighByte().read() + n, getFlag(C), false), 
+        Carry8Bit(reg.af.getHighByte().read(), n , false) || Carry8Bit(reg.af.getHighByte().read() + n, getFlag(C), false)
         );
 
         reg.af.getHighByte().write(result);
@@ -1024,8 +1022,8 @@ namespace GBEmu
         setFlags(
         result == 0,
         1, 
-        HalfCarry8Bit(reg.af.getHighByte().read(), RegSource.read(), true, true), 
-        Carry8Bit(reg.af.getHighByte().read(), RegSource.read(), true, true)
+        HalfCarry8Bit(reg.af.getHighByte().read(), RegSource.read(), true), 
+        Carry8Bit(reg.af.getHighByte().read(), RegSource.read(), true)
         );
 
         reg.af.getHighByte().write(result);
@@ -1039,8 +1037,8 @@ namespace GBEmu
         setFlags(
         result == 0,
         1, 
-        HalfCarry8Bit(reg.af.getHighByte().read(), n, true, true), 
-        Carry8Bit(reg.af.getHighByte().read(), n, true, true)
+        HalfCarry8Bit(reg.af.getHighByte().read(), n, true), 
+        Carry8Bit(reg.af.getHighByte().read(), n, true)
         );
 
         reg.af.getHighByte().write(result);
@@ -1055,8 +1053,8 @@ namespace GBEmu
         setFlags(
         result == 0,
         1, 
-        HalfCarry8Bit(reg.af.getHighByte().read(), n, true, true), 
-        Carry8Bit(reg.af.getHighByte().read(), n, true, true)
+        HalfCarry8Bit(reg.af.getHighByte().read(), n, true), 
+        Carry8Bit(reg.af.getHighByte().read(), n, true)
         );
 
         reg.af.getHighByte().write(result);
@@ -1069,8 +1067,8 @@ namespace GBEmu
         setFlags(
         result == 0,
         1, 
-        HalfCarry8Bit(reg.af.getHighByte().read(), RegSource.read() + getFlag(C), true, true), 
-        Carry8Bit(reg.af.getHighByte().read(), RegSource.read() + getFlag(C), true, true)
+        HalfCarry8Bit(reg.af.getHighByte().read(), RegSource.read(), true) ||  HalfCarry8Bit(reg.af.getHighByte().read() - RegSource.read(), getFlag(C), true),
+        Carry8Bit(reg.af.getHighByte().read(), RegSource.read(), true) || Carry8Bit(reg.af.getHighByte().read() - RegSource.read(), getFlag(C), true)
         );
 
         reg.af.getHighByte().write(result);
@@ -1084,8 +1082,8 @@ namespace GBEmu
         setFlags(
         result == 0,
         1, 
-        HalfCarry8Bit(reg.af.getHighByte().read(), n + getFlag(C), true, true), 
-        Carry8Bit(reg.af.getHighByte().read(), n + getFlag(C), true, true)
+        HalfCarry8Bit(reg.af.getHighByte().read(), n, true) || HalfCarry8Bit(reg.af.getHighByte().read() - n, getFlag(C), true), 
+        Carry8Bit(reg.af.getHighByte().read(), n, true) || Carry8Bit(reg.af.getHighByte().read() - n, getFlag(C), true)
         );
 
         reg.af.getHighByte().write(result);
@@ -1100,8 +1098,8 @@ namespace GBEmu
         setFlags(
         result == 0,
         1, 
-        HalfCarry8Bit(reg.af.getHighByte().read(), n + getFlag(C), true, true), 
-        Carry8Bit(reg.af.getHighByte().read(), n + getFlag(C), true, true)
+        HalfCarry8Bit(reg.af.getHighByte().read(), n, true) || HalfCarry8Bit(reg.af.getHighByte().read() - n, getFlag(C), true), 
+        Carry8Bit(reg.af.getHighByte().read(), n, true) || Carry8Bit(reg.af.getHighByte().read() - n, getFlag(C), true)
         );
 
         reg.af.getHighByte().write(result);
@@ -1114,8 +1112,8 @@ namespace GBEmu
         setFlags(
         result == 0,
         1, 
-        HalfCarry8Bit(reg.af.getHighByte().read(), RegSource.read(), true, true), 
-        Carry8Bit(reg.af.getHighByte().read(), RegSource.read(), true, true)
+        HalfCarry8Bit(reg.af.getHighByte().read(), RegSource.read(), true), 
+        Carry8Bit(reg.af.getHighByte().read(), RegSource.read(), true)
         );
     }
 
@@ -1127,8 +1125,8 @@ namespace GBEmu
         setFlags(
         result == 0,
         1, 
-        HalfCarry8Bit(reg.af.getHighByte().read(), n, true, true), 
-        Carry8Bit(reg.af.getHighByte().read(), n, true, true)
+        HalfCarry8Bit(reg.af.getHighByte().read(), n, true), 
+        Carry8Bit(reg.af.getHighByte().read(), n, true)
         );
     }
 
@@ -1141,33 +1139,47 @@ namespace GBEmu
         setFlags(
         result == 0,
         1, 
-        HalfCarry8Bit(reg.af.getHighByte().read(), n, true, true), 
-        Carry8Bit(reg.af.getHighByte().read(), n, true, true)
+        HalfCarry8Bit(reg.af.getHighByte().read(), n, true), 
+        Carry8Bit(reg.af.getHighByte().read(), n, true)
         );
     }
 
     void cpu::INC_R8(Register8Bit& Reg8)
     {
-        setFlags((u8)(Reg8.read()+1) == 0, 0, HalfCarry8Bit(Reg8.read(),1,false,true), getFlag(C));
+        setFlags((u8)(Reg8.read()+1) == 0, 0, HalfCarry8Bit(Reg8.read(),1,false), getFlag(C));
         Reg8.Increment();
     }
 
     void cpu::INC_HL()
     {
-        setFlags((u16)(reg.hl.read()+1) == 0, 0, HalfCarry8Bit(reg.hl.read(),1,false,true), getFlag(C));
-        reg.hl.Increment();
+        u8 n = read_memory(reg.hl.read());
+        u8 result = n + 1;
+        setFlags(
+            result == 0,
+            0,
+            HalfCarry8Bit(n,1,false),
+            getFlag(C)
+        );
+        write_memory(reg.hl.read(), result);
     }
 
     void cpu::DEC_R8(Register8Bit& Reg8)
     {
-        setFlags((u8)(Reg8.read()-1) == 0, 1, HalfCarry8Bit(Reg8.read(),1,true,true), getFlag(C));
+        setFlags((u8)(Reg8.read()-1) == 0, 1, HalfCarry8Bit(Reg8.read(),1,true), getFlag(C));
         Reg8.Decrement();
     }
 
     void cpu::DEC_HL()
     {
-        setFlags((u16)(reg.hl.read()-1) == 0, 1, HalfCarry8Bit(reg.hl.read(),1,true,true), getFlag(C));
-        reg.hl.Decrement();
+        u8 n = read_memory(reg.hl.read());
+        u8 result = n - 1;
+        setFlags(
+            result == 0,
+            1,
+            HalfCarry8Bit(n,1,true),
+            getFlag(C)
+        );
+        write_memory(reg.hl.read(), result);
     }
 
     void cpu::AND_R8(Register8Bit& RegSource)
@@ -1350,7 +1362,15 @@ namespace GBEmu
 
     void cpu::CPL()
     {
-        reg.af.getHighByte().write(~(reg.af.getHighByte().read()));
+        u8 NotA = ~(reg.af.getHighByte().read());
+        reg.af.getHighByte().write(NotA);
+
+        setFlags(
+            getFlag(Z),
+            1,
+            1,
+            getFlag(C)
+        );
     }
 
     void cpu::INC_R16(Register16Bit& Reg16)
@@ -1370,8 +1390,8 @@ namespace GBEmu
         setFlags(
             getFlag(Z),
             0,
-            HalfCarry16bit(reg.hl.read(), Reg16.read(),false,true),
-            Carry16bit(reg.hl.read(), Reg16.read(),false,true)
+            HalfCarry16bit(reg.hl.read(), Reg16.read(),false),
+            Carry16bit(reg.hl.read(), Reg16.read(),false)
         );
 
         reg.hl.write(result);
@@ -1385,14 +1405,13 @@ namespace GBEmu
         setFlags(
             0,
             0,
-            HalfCarry8Bit(reg.sp.read()&0xFF,e,false,e>0),
-            Carry8Bit(reg.sp.read()&0xFF,e,false,e>0)
+            HalfCarry8Bit(reg.sp.read() & 0xFF, e & 0xFF, false),
+            Carry8Bit(reg.sp.read() & 0xFF, e & 0xFF, false)
         );
 
         reg.sp.write(result);
     }
-
-    // Take a look at these to make sure they look alright (Will do past me)
+ 
     void cpu::RLCA()
     {
         u8 b7 = reg.af.getHighByte().readBit(7);
@@ -1583,7 +1602,7 @@ namespace GBEmu
     {
         u8 n = read_memory(reg.hl.read());
         u8 b7 = (n >> 7) & 0x1;
-        u8 left_rotated_byte = (n << 1) & 0xFE;
+        u8 left_rotated_byte = (n << 1);
         setFlags
         (
             left_rotated_byte == 0,
@@ -1591,6 +1610,7 @@ namespace GBEmu
             0,
             b7
         );
+        write_memory(reg.hl.read(), left_rotated_byte);
 
     }
 
@@ -1611,10 +1631,11 @@ namespace GBEmu
 
     void cpu::SRA_HL()
     {
-        u8 n = (reg.hl.read());
-        u8 b7 = n & 0x80;
-        u8 b0 = n&0x01;
-        u8 right_rotated_byte = b7 | n >> 1;
+        u8 n = read_memory(reg.hl.read());
+        u8 b7 = (n >> 7) & 0x1;
+        u8 b0 = n & 0x01;
+        u8 right_rotated_byte = (b7  << 7) | (n >> 1);
+
         setFlags
         (
             right_rotated_byte == 0,
@@ -1643,7 +1664,7 @@ namespace GBEmu
 
     void cpu::SRL_HL()
     {
-        u8 n = (reg.hl.read());
+        u8 n = read_memory(reg.hl.read());
         u8 b0 = n&0x01;
         u8 right_rotated_byte = n >> 1;
         setFlags
@@ -1824,7 +1845,7 @@ namespace GBEmu
         u8 msb = read_memory(reg.sp.read());
         reg.sp.Increment();
         reg.pc.write(buildAdress(lsb,msb)); 
-        IME = 1;
+        enablingIME = true;
     }
 
     void cpu::RST_u8(u8 n)
@@ -1853,7 +1874,7 @@ namespace GBEmu
 
     void cpu::EI()
     {
-        IME = 1;
+        enablingIME = true;
     }
 
     void cpu::NOP()
