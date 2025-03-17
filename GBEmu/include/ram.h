@@ -15,7 +15,7 @@ namespace GBEmu
         public:
 
         // Connects the RAM to the Emulator
-        void RAM::connectRAM(Emulator* emu);
+        void connectRAM(Emulator* emu);
 
         // Getters and setters for ram
         void write_wram(u16 adress, u8 data);

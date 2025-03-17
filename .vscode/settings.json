@@ -72,5 +72,7 @@
         "xutility": "cpp",
         "fstream": "cpp",
         "filesystem": "cpp"
-    }
+    },
+    "cmake.options.statusBarVisibility": "compact",
+
 }

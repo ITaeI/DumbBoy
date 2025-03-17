@@ -38,11 +38,6 @@ namespace GBEmu
                     Emu->systemBus.write(0xFF02,0x00);
                     std::cout << "Debug Message: " << DBG << std::endl;
                 }
-
-                if(opcode == 0xCB)
-                {
-                    std::cout << "CB Hit" << std::endl;
-                }
     
                 // if(DBG.size() != 0)
                 // {
@@ -53,21 +48,17 @@ namespace GBEmu
                 // {
                 //     std::cout << "PC: " << std::hex << reg.pc.read() - 1 << " Opcode: " << std::hex << (int)opcode << " AF: " << std::hex << reg.af.read() << std::endl;
                 // }
-
-                if(reg.pc.read()-1 == 0xc42F)
-                {
-                    std::cout << "Debug Hit" << std::endl;
-                }
-                if(DBG == "01-special")
-                {
-                    std::cout << "Debug Hit" << std::endl;
-                }
+                // if(DBG == "02-interrupts")
+                // {
+                //     std::cout << "Debug Hit" << std::endl;
+                // }
     
                 executeInstruction();
             }
         }
         else{
 
+            Emu->ClockCycle(1);
             if(IF.read())
             {
                 isHalted = false;
@@ -140,6 +131,7 @@ namespace GBEmu
         isHalted = false;
         IME = 0;
         current_cycles = 0;
+        Emu->timer.timerRegs.DIV.write(0xABCC);
     }
 
     u8 cpu::read_memory(u16 addr)
@@ -150,13 +142,14 @@ namespace GBEmu
         {
             reg.pc.Increment();
         }
-
+        Emu->ClockCycle(1);
         return mem;
     }
 
 
     void cpu::write_memory(u16 addr, u8 data)
     {   
+        Emu->ClockCycle(1);
         Emu->systemBus.write(addr, data);
     }
 
@@ -879,7 +872,9 @@ namespace GBEmu
 
     void cpu::LD_SP_HL()
     {
+        // requires an extra cycle 
         reg.sp.write(reg.hl.read());
+        Emu->ClockCycle(1);
     }
 
     void cpu::PUSH_AF()
@@ -893,6 +888,8 @@ namespace GBEmu
     void cpu::PUSH_R16(Register16Bit& RegSource)
     {
         reg.sp.Decrement();
+        // requires an extra cycle
+        Emu->ClockCycle(1);
         write_memory(reg.sp.read(), RegSource.getHighByte().read());
         reg.sp.Decrement();
         write_memory(reg.sp.read(), RegSource.getLowByte().read());
@@ -919,6 +916,7 @@ namespace GBEmu
     {
         Sint8 e = read_memory(reg.pc.read());
         u16 result = reg.sp.read() + e;
+
         // Set Flags
         setFlags(
         0,
@@ -926,6 +924,8 @@ namespace GBEmu
         HalfCarry8Bit(reg.sp.read()&0xFF, e, false), 
         Carry8Bit(reg.sp.read()&0xFF, e, false)
         );
+        //Requires an extra cycle
+        Emu->ClockCycle(1);
 
         reg.hl.write(result);
     }
@@ -1376,11 +1376,15 @@ namespace GBEmu
     void cpu::INC_R16(Register16Bit& Reg16)
     {
         Reg16.Increment();
+        //Requires an extra cycle
+        Emu->ClockCycle(1);
     }
 
     void cpu::DEC_R16(Register16Bit& Reg16)
     {
         Reg16.Decrement();
+        //Requires an extra cycle
+        Emu->ClockCycle(1);
     }
 
     void cpu::ADD_HL_R16(Register16Bit& Reg16)
@@ -1395,6 +1399,8 @@ namespace GBEmu
         );
 
         reg.hl.write(result);
+        //Requires an extra cycle
+        Emu->ClockCycle(1);
     }
 
     void cpu::ADD_SP_E()
@@ -1408,6 +1414,8 @@ namespace GBEmu
             HalfCarry8Bit(reg.sp.read() & 0xFF, e & 0xFF, false),
             Carry8Bit(reg.sp.read() & 0xFF, e & 0xFF, false)
         );
+        //Requires an extra 2 cycles
+        Emu->ClockCycle(2);
 
         reg.sp.write(result);
     }
@@ -1582,6 +1590,7 @@ namespace GBEmu
             b7
         );
         write_memory(reg.hl.read(), left_rotated_byte);
+        
     }
 
     void cpu::SLA_R8(Register8Bit& RegSource)
@@ -1754,6 +1763,8 @@ namespace GBEmu
         u16 adress = fetch16Bit();
 
         reg.pc.write(adress);
+        //Requires an extra cycle
+        Emu->ClockCycle(1);
     }
 
     void cpu::JP_HL()
@@ -1768,6 +1779,8 @@ namespace GBEmu
         if (CC)
         {
             reg.pc.write(adress);
+            //Requires an extra cycle
+            Emu->ClockCycle(1);
         }
     }
 
@@ -1775,6 +1788,8 @@ namespace GBEmu
     {
         Sint8 e = read_memory(reg.pc.read());
         reg.pc.write(reg.pc.read() + e);
+        //Requires an extra cycle
+        Emu->ClockCycle(1);
     }
 
     void cpu::JR_CC_E(bool CC)
@@ -1784,27 +1799,27 @@ namespace GBEmu
         if(CC)
         {
             reg.pc.write(reg.pc.read() + e);
+            //Requires an extra cycle
+            Emu->ClockCycle(1); 
         }
     }
 
     void cpu::CALL_u16()
     {
-        u8 lsb = read_memory(reg.pc.read());
-        u8 msb = read_memory(reg.pc.read());
-        u16 adress = buildAdress(lsb,msb);
+        u16 adress = fetch16Bit();
         reg.sp.Decrement();
         write_memory(reg.sp.read(), reg.pc.getHighByte().read());
         reg.sp.Decrement();
         write_memory(reg.sp.read(), reg.pc.getLowByte().read());
         reg.pc.write(adress);
+        //Requires an extra cycle
+        Emu->ClockCycle(1);
 
     }
 
     void cpu::CALL_CC_u16(bool CC)
     {
-        u8 lsb = read_memory(reg.pc.read());
-        u8 msb = read_memory(reg.pc.read());
-        u16 adress = buildAdress(lsb,msb);
+        u16 adress = fetch16Bit();
         if (CC)
         {
             reg.sp.Decrement();
@@ -1812,6 +1827,8 @@ namespace GBEmu
             reg.sp.Decrement();
             write_memory(reg.sp.read(), reg.pc.getLowByte().read());
             reg.pc.write(adress);
+            //Requires an extra cycle
+            Emu->ClockCycle(1);
         }
 
     }
@@ -1824,6 +1841,8 @@ namespace GBEmu
         reg.sp.Increment();
 
         reg.pc.write(buildAdress(lsb,msb));
+        //Requires an extra cycle
+        Emu->ClockCycle(1);
     }
 
     void cpu::RET_CC(bool CC)
@@ -1835,7 +1854,11 @@ namespace GBEmu
             u8 msb = read_memory(reg.sp.read());
             reg.sp.Increment();
             reg.pc.write(buildAdress(lsb,msb)); 
+            //Requires an extra cycle
+            Emu->ClockCycle(1);
         }
+        //Requires an extra cycle
+        Emu->ClockCycle(1);
     }
 
     void cpu::RETI()
@@ -1845,6 +1868,8 @@ namespace GBEmu
         u8 msb = read_memory(reg.sp.read());
         reg.sp.Increment();
         reg.pc.write(buildAdress(lsb,msb)); 
+        //Requires an extra cycle
+        Emu->ClockCycle(1);
         enablingIME = true;
     }
 
@@ -1855,8 +1880,11 @@ namespace GBEmu
         reg.sp.Decrement();
         write_memory(reg.sp.read(), reg.pc.getLowByte().read());
         reg.pc.write(buildAdress(n,0x00));
+        //Requires an extra cycle
+        Emu->ClockCycle(1);
     }
 
+    //Look more into this
     void cpu::HALT()
     {
         isHalted = true;

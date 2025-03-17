@@ -38,5 +38,6 @@ namespace GBEmu
 
         int run();
         int runCPU();
+        void ClockCycle(int cpu_cycles);
     };
 }

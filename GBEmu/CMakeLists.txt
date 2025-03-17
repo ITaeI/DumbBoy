@@ -1,20 +1,26 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.24)
 
 project(GBEmu) 
 
 set(CMAKE_CXX_STANDARD 17)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
+#-------------Fetching Required Packages---------------#
 
-set(EXECUTABLE_NAME ${PROJECT_NAME}) 
+include(FetchContent)
 
-add_executable(${EXECUTABLE_NAME})   
- 
-file(GLOB SOURCES "src/*.cpp")
-target_sources(${EXECUTABLE_NAME} PRIVATE ${SOURCES})  
- 
-add_subdirectory(ThirdParty/SDL)   
-  
+# SDL3
+FetchContent_Declare(
+    SDL3
+    URL https://github.com/libsdl-org/SDL/archive/refs/tags/release-3.2.8.zip
+)
+FetchContent_MakeAvailable(SDL3)
+
+
+#------------------Linking Packages To Project------------------#
+
+
+set(EXECUTABLE_NAME ${PROJECT_NAME})  
+File(GLOB SOURCES "src/*.cpp")
+add_executable(${PROJECT_NAME} ${SOURCES})
 target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/include")
-target_link_libraries(${EXECUTABLE_NAME} PRIVATE SDL3::SDL3)  
+target_link_libraries(${EXECUTABLE_NAME} SDL3::SDL3)  

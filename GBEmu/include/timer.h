@@ -4,14 +4,21 @@
 
 namespace GBEmu
 {
+    class Emulator;
     class EmuTimer
     {
+        private:
+        Emulator *Emu;
+        public:
         struct TimerRegs
         {
-            Register8Bit DIV, TIMA, TMA, TAC;
+            Register8Bit TIMA, TMA, TAC;
+            Register16Bit DIV;
         };
         
         TimerRegs timerRegs;
+
+        void connectTimer(Emulator *emu);
     
         void timer_tick();
         void timer_init();

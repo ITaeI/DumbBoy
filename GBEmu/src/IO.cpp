@@ -32,8 +32,7 @@ namespace GBEmu
         }
         else if (adress <= 0xFF07)
         {
-            std::cout << "Timer and divider" << std::endl;
-            return 0;
+            return Emu->timer.timer_read(adress);
             //NO_IMPL
         }
         else if (adress == 0xFF0F)
@@ -147,8 +146,7 @@ namespace GBEmu
         }
         else if (adress <= 0xFF07)
         {
-            //std::cout << "Timer and divider" << std::endl;
-            //NO_IMPL
+            Emu->timer.timer_write(adress, data);
         }
         else if (adress == 0xFF0F)
         {

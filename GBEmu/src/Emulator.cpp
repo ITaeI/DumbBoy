@@ -21,6 +21,7 @@ namespace GBEmu
         systemRam.connectRAM(this);
         screen.connectScreen(this);
         io.connectIO(this);
+        timer.connectTimer(this);
     }
 
     int Emulator::runCPU()
@@ -55,7 +56,7 @@ namespace GBEmu
         //cartridge.cart_load("09-op r,r.gb"); // Passed
         //cartridge.cart_load("10-bit ops.gb"); // Passed
         //cartridge.cart_load("11-op a,(hl).gb"); // Passed
-        //cartridge.cart_load("cpu_instrs.gb"); //Unsure
+        //cartridge.cart_load("cpu_instrs.gb"); //Passed
 
         // Initialize the Screen
         screen.InitializeScreen(cartridge.header->title, 1280, 720);
@@ -73,5 +74,20 @@ namespace GBEmu
 
         t.join();
         return 0;
+    }
+
+    void Emulator::ClockCycle(int M_Cycles)
+    {
+        // Note The gameboy has two cycle lengths M_Cycles are 4 T_Cycles
+        // https://gekkio.fi/files/gb-docs/gbctr.pdf CH5
+
+        for(int i = M_Cycles; i > 0; i--)  
+        {
+            for(int j = 0; j < 4; j++)
+            {
+                ticks++;
+                timer.timer_tick();
+            }
+        }
     }
 }
