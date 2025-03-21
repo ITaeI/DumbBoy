@@ -72,6 +72,13 @@ namespace GBEmu
 
         // Interrupts
         Register8Bit IE;
+
+        // Interrupt Flags
+        // 0: VBlank
+        // 1: LCD
+        // 2: Timer
+        // 3: Serial
+        // 4: Joypad
         Register8Bit IF;
         bool enablingIME;
         bool IME;

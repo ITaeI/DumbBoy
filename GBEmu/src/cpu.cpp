@@ -36,7 +36,7 @@ namespace GBEmu
                 {
                     DBG.push_back((char)(Emu->systemBus.read(0xFF01)));
                     Emu->systemBus.write(0xFF02,0x00);
-                    std::cout << "Debug Message: " << DBG << std::endl;
+                    //std::cout << "Debug Message: " << DBG << std::endl;
                 }
     
                 // if(DBG.size() != 0)

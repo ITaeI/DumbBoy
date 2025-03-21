@@ -7,6 +7,8 @@
 #include "ram.h"
 #include "IO.h"
 #include "timer.h"
+#include "ppu.h"
+#include "dma.h"
 
 namespace GBEmu
 {
@@ -24,6 +26,9 @@ namespace GBEmu
         Screen screen;
         IO io;
         EmuTimer timer;
+        PPU ppu;
+        DMA dma;
+
 
 
         // Emulator Constructor

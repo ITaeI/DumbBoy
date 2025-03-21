@@ -1,0 +1,7 @@
+[submodule "GBEmu/ThirdParty/imgui"]
+	path = GBEmu/ThirdParty/imgui
+	url = https://github.com/ocornut/imgui
+	branch = docking
+[submodule "GBEmu/ThirdParty/SDL"]
+	path = GBEmu/ThirdParty/SDL
+	url = https://github.com/libsdl-org/SDL

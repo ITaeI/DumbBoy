@@ -22,6 +22,8 @@ namespace GBEmu
         screen.connectScreen(this);
         io.connectIO(this);
         timer.connectTimer(this);
+        ppu.connectPPU(this);
+        dma.connectDMA(this);
     }
 
     int Emulator::runCPU()
@@ -68,7 +70,7 @@ namespace GBEmu
 
         while(!exit)
         {
-            screen.pollForEvents();
+            screen.Update();
         }
 
 
@@ -79,6 +81,7 @@ namespace GBEmu
     void Emulator::ClockCycle(int M_Cycles)
     {
         // Note The gameboy has two cycle lengths M_Cycles are 4 T_Cycles
+        // The PPU and timer tick every Dot or T Cycle
         // https://gekkio.fi/files/gb-docs/gbctr.pdf CH5
 
         for(int i = M_Cycles; i > 0; i--)  
@@ -87,7 +90,9 @@ namespace GBEmu
             {
                 ticks++;
                 timer.timer_tick();
+//                ppu.tick();
             }
+            dma.tick();
         }
     }
 }

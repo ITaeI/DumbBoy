@@ -3,7 +3,7 @@
 
 namespace GBEmu
 {
-    class Emulator; // forward declaration
+    class Emulator; // forward declaration .. fun
 
     class Screen
     {
@@ -13,10 +13,9 @@ namespace GBEmu
         std::string title;
         int SCREEN_WIDTH;
         int SCREEN_HEIGHT;
-        static SDL_Window *window;
-        static SDL_Renderer *renderer;
-        static SDL_Texture *texture;
-        static SDL_Surface *surface;
+        SDL_Window *window;
+        SDL_Renderer *renderer;
+        SDL_Texture *texture;
 
         Emulator *Emu;
         public:
@@ -30,13 +29,16 @@ namespace GBEmu
             window = nullptr;
             renderer = nullptr;
             texture = nullptr;
-            surface = nullptr;
         }
 
         //Screen destructor
         ~Screen(){
-            std::cout << "Destroying Screen" << std::endl;
-            std::cout << "Destroying Renderer" << std::endl;
+            //Stop ImGui
+            ImGui_ImplSDLRenderer3_Shutdown();
+            ImGui_ImplSDL3_Shutdown();
+            ImGui::DestroyContext();
+
+            //stop SDL3
             SDL_DestroyRenderer(renderer);
             SDL_DestroyWindow(window);
             std::cout << "Quitting SDL" << std::endl;
@@ -48,6 +50,7 @@ namespace GBEmu
 
         //Initialize the screen
         SDL_AppResult InitializeScreen(std::string Name, int Width, int Height);
+        void Update();
         void pollForEvents();
     };
 }

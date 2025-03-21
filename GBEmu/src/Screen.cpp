@@ -10,10 +10,6 @@ namespace GBEmu
         Emu = emu;
     }
 
-    SDL_Window* Screen::window = nullptr;
-    SDL_Renderer* Screen::renderer = nullptr;
-    SDL_Texture *Screen::texture = nullptr;
-    SDL_Surface *Screen::surface = nullptr;
 
     SDL_AppResult Screen::InitializeScreen(std::string Name, int Width, int Height)
     {
@@ -25,11 +21,75 @@ namespace GBEmu
             return SDL_APP_FAILURE;
         }
 
-        if (!SDL_CreateWindowAndRenderer(title.c_str(), SCREEN_WIDTH, SCREEN_HEIGHT, 0, &window, &renderer)) {
-            SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
-            return SDL_APP_FAILURE;
-        }
+        // define window flags (Window is now resizable)
+        SDL_WindowFlags windowFlags = SDL_WINDOW_RESIZABLE;
+
+        // Create Window
+        window = SDL_CreateWindow("DumbBoy", SCREEN_WIDTH, SCREEN_HEIGHT, windowFlags );
+
+        // Create Renderer
+        renderer = SDL_CreateRenderer(window, NULL);
+
+        // init imgui
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGuiIO& io{ImGui::GetIO()};
+
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+        ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
+        ImGui_ImplSDLRenderer3_Init(renderer);
+
         return SDL_APP_CONTINUE;
+    }
+
+    void Screen::Update()
+    {
+        ImGui_ImplSDLRenderer3_NewFrame();
+        ImGui_ImplSDL3_NewFrame();
+        ImGui::NewFrame();
+        //ImGui::DockSpaceOverViewport(); // This allows Us to dock on the Main SDL Window // Very Cool
+
+
+        ImGuiWindowFlags main_window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+        ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_MenuBar;
+
+        ImGuiViewport *viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(viewport->Pos);
+        ImGui::SetNextWindowSize(viewport->Size);
+
+        ImGui::Begin("Basic Window", nullptr, main_window_flags);
+
+
+        if(ImGui::BeginMenuBar())
+        {
+            if(ImGui::BeginMenu("Sample"))
+            {
+                if(ImGui::MenuItem("Sample"))
+                {
+                    std::cout << "Huzzah" << std::endl;
+                }
+                ImGui::EndMenu();
+            }
+            ImGui::EndMenuBar();
+        }
+        
+        ImGui::End();
+
+        ImGui::Render();
+
+        SDL_SetRenderDrawColor(renderer, 0 , 0 , 0 , 0);
+        SDL_RenderClear(renderer);
+
+        ImGui_ImplSDLRenderer3_RenderDrawData (ImGui::GetDrawData(), renderer);
+        SDL_RenderPresent(renderer);
+
+
+        pollForEvents();
+
     }
 
     void Screen::pollForEvents()
@@ -37,6 +97,9 @@ namespace GBEmu
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
+            // Process All IMGUI Window events
+            ImGui_ImplSDL3_ProcessEvent(&event);
+
             switch(event.type)
             {
                 case SDL_EVENT_QUIT:
