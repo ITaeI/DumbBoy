@@ -8,6 +8,11 @@ namespace GBEmu
         Emu = emu;
     }
 
+    void DMA::init()
+    {
+        in_progress = 0;
+    }
+
     void DMA::tick()
     {
         if(!in_progress)
@@ -33,5 +38,6 @@ namespace GBEmu
     {
         in_progress = 1;
         startAdress = StartAddress;
+        current_index = StartAddress;
     }
 }

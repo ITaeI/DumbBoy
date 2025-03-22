@@ -91,7 +91,16 @@ namespace GBEmu
         }
     }
 
-    bool cart::cart_load(char *filename)
+    void cart::freeRomData()
+    {
+        if(cart_romdata != nullptr)
+        {
+            delete[] cart_romdata;
+            cart_romdata = nullptr; // Reset pointer to avoid dangling reference
+        }
+    }
+
+    bool cart::load(char *filename)
     {
         // Copy the filename to the cart context
         strcpy(cart_filename, filename);

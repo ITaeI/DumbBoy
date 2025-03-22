@@ -14,6 +14,7 @@ namespace GBEmu
 
         public:
         void connectPPU(Emulator *emu);
+        void init();
 
         // VRAM Memory and Control Registers
         
@@ -107,7 +108,7 @@ namespace GBEmu
         // A “dot” = one 222 Hz (≅ 4.194 MHz) time unit. 
         // Dots remain the same regardless of whether the CPU is in Double Speed mode, 
         // so there are 4 dots per Single Speed M-cycle, and 2 per Double Speed M-cycle.
-        int dots = 0;
+        int dots;
 
         // The PPU draws pixels directly to the screen
         // 154 scanlines per frame
@@ -118,7 +119,7 @@ namespace GBEmu
         // 1: Vertical Blank (4560 Dots) - Waiting for next frame
         // 2: OAM scan (80 Dots) - searching for objects on scan line
         // 3: Drawning Pixels (172-289 dots) - sending pixels to lcd
-        u8 Mode = 2;
+        u8 Mode;
 
         // When the PPU is accessing VRAM that memory is inaccessable to the cpu
         // writes are ignored and reads return 0xFF

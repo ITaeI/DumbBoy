@@ -18,6 +18,7 @@ namespace GBEmu
         u8 current_index; //0-159 There are 40 OBJs in total with 4 bytes each
 
         void connectDMA(Emulator *emu);
+        void init();
         void tick();
         void StartTransfer(u8 StartAddress);
     };

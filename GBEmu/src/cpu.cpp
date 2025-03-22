@@ -18,15 +18,6 @@ namespace GBEmu
             if (opcode == 0xCB)
             {   
                 opcode = read_memory(reg.pc.read());
-                // if(DBG.size() != 0)
-                // {
-                //     std::cout << "PC: " << std::hex << reg.pc.read() - 1 << " Opcode: " << std::hex << (int)opcode << " AF: " << std::hex << reg.af.read() << " ";
-                //     std::cout << "Debug Message: " << DBG << std::endl;
-                // }
-                // else
-                // {
-                //     std::cout << "PC: " << std::hex << reg.pc.read() - 1 << " Opcode: " << std::hex << (int)opcode << " AF: " << std::hex << reg.af.read() << std::endl;
-                // }
                 executeCBInstruction();
             }
             else
@@ -36,22 +27,8 @@ namespace GBEmu
                 {
                     DBG.push_back((char)(Emu->systemBus.read(0xFF01)));
                     Emu->systemBus.write(0xFF02,0x00);
-                    //std::cout << "Debug Message: " << DBG << std::endl;
+                    std::cout << "Debug Message: " << DBG << std::endl;
                 }
-    
-                // if(DBG.size() != 0)
-                // {
-                //     std::cout << "PC: " << std::hex << reg.pc.read() - 1 << " Opcode: " << std::hex << (int)opcode << " AF: " << std::hex << reg.af.read() << " ";
-                //     std::cout << "Debug Message: " << DBG << std::endl;
-                // }
-                // else
-                // {
-                //     std::cout << "PC: " << std::hex << reg.pc.read() - 1 << " Opcode: " << std::hex << (int)opcode << " AF: " << std::hex << reg.af.read() << std::endl;
-                // }
-                // if(DBG == "02-interrupts")
-                // {
-                //     std::cout << "Debug Hit" << std::endl;
-                // }
     
                 executeInstruction();
             }
@@ -129,9 +106,14 @@ namespace GBEmu
 
 
         isHalted = false;
+        enablingIME = 0;
         IME = 0;
         current_cycles = 0;
         Emu->timer.timerRegs.DIV.write(0xABCC);
+        currentInstruction = Instruction();
+
+        // For Debugging
+        DBG = "";
     }
 
     u8 cpu::read_memory(u16 addr)

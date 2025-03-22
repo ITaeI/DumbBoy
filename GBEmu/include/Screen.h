@@ -50,7 +50,45 @@ namespace GBEmu
 
         //Initialize the screen
         SDL_AppResult InitializeScreen(std::string Name, int Width, int Height);
+
+
+        /*********************************************WINDOW FLAGS*************************************************/
+
+        // Imgui Window Flags
+        ImGuiWindowFlags main_window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+        ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_MenuBar;
+
+        ImGuiWindowFlags textureWindows = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar;
+        // SDL Window Flags
+        SDL_WindowFlags SDLwindowFlags = SDL_WINDOW_RESIZABLE;
+
+        /**********************************************************************************************************/
+
+
+        // --- Main Screen Update Loop --- //
         void Update();
+
+        //Update Components:
+        
+        // ImGui Renders:
+
+        // Main Window - Primarily for docking, and Main Menu Bar
+        void renderMainWindow();
+        ImGuiID dockID;
+
+        //Game Screen - Output of GB Tiles and Sprites
+        void renderGBScreen();
+        bool GBWindowReady = false;
+
+        //Debug Window
+        void renderDebugWindow();
+        bool DebugWindowReady = false;
+        bool showCpuRegs = false;
+        bool showLcdRegs = false;
+        bool showTimerRegs = false;
+
+        //Event Handling
         void pollForEvents();
     };
 }

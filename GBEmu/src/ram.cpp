@@ -9,6 +9,12 @@ namespace GBEmu
         Emu = emu;
     }
 
+    void RAM::init()
+    {
+        wram[0x2000] = {0x00};
+        hram[0x80] = {0x00};
+    }
+
     u8 RAM::read_wram(u16 adress)
     {
         return wram[adress - 0xC000];

@@ -1,6 +1,7 @@
 #include "common.h"
 #include "Screen.h"
 #include "Emulator.h"
+#include <thread>
 
 namespace GBEmu
 {
@@ -21,11 +22,8 @@ namespace GBEmu
             return SDL_APP_FAILURE;
         }
 
-        // define window flags (Window is now resizable)
-        SDL_WindowFlags windowFlags = SDL_WINDOW_RESIZABLE;
-
         // Create Window
-        window = SDL_CreateWindow("DumbBoy", SCREEN_WIDTH, SCREEN_HEIGHT, windowFlags );
+        window = SDL_CreateWindow(Name.c_str(), SCREEN_WIDTH, SCREEN_HEIGHT, SDLwindowFlags );
 
         // Create Renderer
         renderer = SDL_CreateRenderer(window, NULL);
@@ -47,49 +45,296 @@ namespace GBEmu
 
     void Screen::Update()
     {
+
         ImGui_ImplSDLRenderer3_NewFrame();
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
-        //ImGui::DockSpaceOverViewport(); // This allows Us to dock on the Main SDL Window // Very Cool
 
+        // Main ImGui Render Windows
+        renderMainWindow();
+        if(GBWindowReady)
+            renderGBScreen();
+        if(DebugWindowReady)
+            renderDebugWindow();
 
-        ImGuiWindowFlags main_window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
-        ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-        ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_MenuBar;
-
-        ImGuiViewport *viewport = ImGui::GetMainViewport();
-        ImGui::SetNextWindowPos(viewport->Pos);
-        ImGui::SetNextWindowSize(viewport->Size);
-
-        ImGui::Begin("Basic Window", nullptr, main_window_flags);
-
-
-        if(ImGui::BeginMenuBar())
-        {
-            if(ImGui::BeginMenu("Sample"))
-            {
-                if(ImGui::MenuItem("Sample"))
-                {
-                    std::cout << "Huzzah" << std::endl;
-                }
-                ImGui::EndMenu();
-            }
-            ImGui::EndMenuBar();
-        }
-        
-        ImGui::End();
-
-        ImGui::Render();
 
         SDL_SetRenderDrawColor(renderer, 0 , 0 , 0 , 0);
         SDL_RenderClear(renderer);
 
+        ImGui::Render();
         ImGui_ImplSDLRenderer3_RenderDrawData (ImGui::GetDrawData(), renderer);
         SDL_RenderPresent(renderer);
 
 
         pollForEvents();
 
+    }
+
+    void Screen::renderMainWindow()
+    {
+
+        ImGuiViewport *viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(viewport->Pos);
+        ImGui::SetNextWindowSize(viewport->Size);
+
+        if(ImGui::Begin("Basic Window", nullptr, main_window_flags))
+        {
+            if(ImGui::BeginMenuBar())
+            {
+                if(ImGui::BeginMenu("File"))
+                {
+                    if(ImGui::MenuItem("Reset Rom"))
+                    {
+                        // Stop Previous cpu_thread
+                        Emu->stopCPU();
+                        // Reinitialize Emulator
+                        Emu->InitializeEmu();
+                        
+                        GBWindowReady = false;
+                        // ToDo: change how to get roms into program
+                        Emu->cartridge.load("Super Mario Land (JUE) (V1.1) [!].gb");
+                        // run CPU on a separate thread
+                        Emu->running = true;
+                        Emu->cpu_thread = std::thread (&Emulator::runCPU, Emu);
+
+                        // Signal UI to render GB Screen
+                        GBWindowReady = true;
+
+                    }
+                    else if(ImGui::MenuItem("Load Rom"))
+                    {
+                        // Stop Previous cpu_thread
+                        Emu->stopCPU();
+                        // Reinitialize Emulator
+                        Emu->InitializeEmu();
+                        
+                        GBWindowReady = false;
+                        // ToDo: change how to get roms into program
+                        Emu->cartridge.load("02-interrupts.gb");
+                        // run CPU on a separate thread
+                        Emu->running = true;
+                        Emu->cpu_thread = std::thread (&Emulator::runCPU, Emu);
+
+                        // Signal UI to render GB Screen
+                        GBWindowReady = true;
+                    }
+                    else if(ImGui::MenuItem("Exit"))
+                    {
+                        Emu->exit = true;
+                    }
+                    ImGui::EndMenu();
+                }
+                else if(ImGui::BeginMenu("Debug"))
+                {
+                    if(ImGui::MenuItem("Debug Window"))
+                    {
+                        DebugWindowReady = true;
+                    }
+                    ImGui::EndMenu();
+                }
+                ImGui::EndMenuBar();
+            }
+            
+        }
+
+        
+        dockID = ImGui::GetID("DockSpace");
+        ImGui::DockSpace(dockID, ImVec2(0.0f,0.0f), ImGuiDockNodeFlags_None);
+        ImGui::End();
+
+
+    }
+
+    void Screen::renderGBScreen()
+    {
+        ImGui::SetNextWindowDockID(dockID, ImGuiCond_FirstUseEver);
+        ImGui::Begin(Emu->cartridge.cart_filename , nullptr, ImGuiWindowFlags_NoCollapse);
+
+        ImGui::End();
+    }
+
+    void Screen::renderDebugWindow()
+    {
+        ImGui::SetNextWindowDockID(dockID, ImGuiCond_FirstUseEver);
+        if(ImGui::Begin("Debug Window", nullptr, ImGuiWindowFlags_NoCollapse))
+        {
+
+            ImGui::Checkbox("Cpu Registers", &showCpuRegs);
+            ImGui::SameLine();
+            ImGui::Checkbox("LCD Registers", &showLcdRegs);
+            ImGui::SameLine();
+            ImGui::Checkbox("Timer Registers", &showTimerRegs);
+
+            ImGui::Separator();
+            if(showCpuRegs)
+            {
+                if(ImGui::BeginTable("CPU Registers", 4, ImGuiTableFlags_None))
+                {
+                    ImGui::TableSetupColumn("CPU Registers", ImGuiTableColumnFlags_NoResize);
+                    ImGui::TableSetupColumn("##Value 1", ImGuiTableColumnFlags_NoResize);
+                    ImGui::TableSetupColumn("##Regs 2", ImGuiTableColumnFlags_NoResize);
+                    ImGui::TableSetupColumn("##Value 2", ImGuiTableColumnFlags_NoResize);
+    
+                    ImGui::TableHeadersRow();
+                    ImGui::Separator();
+    
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("AF");
+    
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("0x%04X", Emu->processor.reg.af.read());
+    
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("BC");
+    
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("0x%04X", Emu->processor.reg.bc.read());
+    
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("DE");
+    
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("0x%04X", Emu->processor.reg.de.read());
+    
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("HL");
+    
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("0x%04X", Emu->processor.reg.hl.read());
+    
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("SP");
+    
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("0x%04X", Emu->processor.reg.sp.read());
+    
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("PC");
+    
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("0x%04X", Emu->processor.reg.pc.read());
+    
+    
+                }
+                ImGui::EndTable();
+            }
+
+            if(showLcdRegs)
+            {
+                if(ImGui::BeginTable("LCD Registers", 4, ImGuiTableFlags_None))
+                {
+                    ImGui::TableSetupColumn("LCD Registers", ImGuiTableColumnFlags_NoResize);
+                    ImGui::TableSetupColumn("##Value 1", ImGuiTableColumnFlags_NoResize);
+                    ImGui::TableSetupColumn("##Regs 2", ImGuiTableColumnFlags_NoResize);
+                    ImGui::TableSetupColumn("##Value 2", ImGuiTableColumnFlags_NoResize);
+    
+                    ImGui::TableHeadersRow();
+    
+    
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("AF");
+    
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("0x%02X", Emu->processor.reg.af.read());
+    
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("BC");
+    
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("0x%02X", Emu->processor.reg.bc.read());
+    
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("DE");
+    
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("0x%02X", Emu->processor.reg.de.read());
+    
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("HL");
+    
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("0x%02X", Emu->processor.reg.hl.read());
+    
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("SP");
+    
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("0x%02X", Emu->processor.reg.sp.read());
+    
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("PC");
+    
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("0x%02X", Emu->processor.reg.pc.read());
+    
+    
+                }
+                ImGui::EndTable();
+            }
+
+            if(showTimerRegs)
+            {
+                if(ImGui::BeginTable("Timer Registers", 4, ImGuiTableFlags_None))
+                {
+                    ImGui::TableSetupColumn("Timer Registers", ImGuiTableColumnFlags_NoResize);
+                    ImGui::TableSetupColumn("##Value 1", ImGuiTableColumnFlags_NoResize);
+                    ImGui::TableSetupColumn("##Regs 2", ImGuiTableColumnFlags_NoResize);
+                    ImGui::TableSetupColumn("##Value 2", ImGuiTableColumnFlags_NoResize);
+    
+                    ImGui::TableHeadersRow();
+    
+    
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("AF");
+    
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("0x%02X", Emu->processor.reg.af.read());
+    
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("BC");
+    
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("0x%02X", Emu->processor.reg.bc.read());
+    
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("DE");
+    
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("0x%02X", Emu->processor.reg.de.read());
+    
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("HL");
+    
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("0x%02X", Emu->processor.reg.hl.read());
+    
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("SP");
+    
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("0x%02X", Emu->processor.reg.sp.read());
+    
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("PC");
+    
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("0x%02X", Emu->processor.reg.pc.read());
+    
+    
+                }
+                ImGui::EndTable();
+            }
+        }
+        ImGui::End();
     }
 
     void Screen::pollForEvents()

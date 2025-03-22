@@ -23,9 +23,8 @@ namespace GBEmu
         ~cart()
         {
             std::cout << "Freeing Rom Data" << std::endl;
-            delete[] cart_romdata;
-            // std::cout << "Freeing Header Data" << std::endl;
-            // delete header;
+            freeRomData();
+
         };
 
         struct cart_header
@@ -48,12 +47,14 @@ namespace GBEmu
         // Cart context
         char cart_filename[1024];
         u32 cart_rom_size;
-        u8 *cart_romdata;
-        cart_header *header;
+        u8 *cart_romdata = nullptr;
+        cart_header *header = nullptr;
 
 
         //Load a ROM file
-        bool cart_load(char *filename);
+        bool load(char *filename);
+        // Reset Rom File Data
+        void freeRomData();
         //Read a byte from the ROM
         u8 read(u16 addr);
         //Write a byte to the ROM

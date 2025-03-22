@@ -16,7 +16,7 @@ namespace GBEmu
 
         // Connects the RAM to the Emulator
         void connectRAM(Emulator* emu);
-
+        void init();
         // Getters and setters for ram
         void write_wram(u16 adress, u8 data);
         u8 read_wram(u16 adress);

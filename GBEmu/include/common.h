@@ -7,7 +7,7 @@
 // Standard Libraries
 #include <cstdint>
 #include <iostream>
-#include <string.h>
+#include <string>
 #include <vector>
 
 // Standard Variable Sizes

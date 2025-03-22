@@ -8,6 +8,25 @@ namespace GBEmu
     {
         Emu = emu;
     }
+    void PPU::init()
+    {
+        // Reset For new use
+        VRAM[0x2000] = {0};
+        oam.raw[160] = {0};
+        Mode = 2;
+        dots = 0;
+
+        lcdRegs.LCDC.write(0x91);
+        lcdRegs.STAT.write(0x85);
+        lcdRegs.SCY.write(0x00);
+        lcdRegs.SCX.write(0x00);
+        lcdRegs.LYC.write(0x00);
+        lcdRegs.LY.write(0x00);
+        lcdRegs.DMA.write(0xFF);
+        lcdRegs.BGP.write(0xFC);
+        lcdRegs.WX.write(0x00);
+        lcdRegs.WY.write(0x00);
+    }
 
     void PPU::tick()
     {
@@ -20,8 +39,8 @@ namespace GBEmu
             if (dots >= 70224)
             {
                 dots-= 70224;
-                return;
             }
+            return;
         }
 
         switch (Mode)
@@ -183,7 +202,6 @@ namespace GBEmu
         {
             case 0xFF40:
                 std::cout << "LCD Control" << std::endl;
-
                 lcdRegs.LCDC.write(data);
                 break;
             case 0xFF41:

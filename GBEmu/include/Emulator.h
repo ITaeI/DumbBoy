@@ -9,6 +9,7 @@
 #include "timer.h"
 #include "ppu.h"
 #include "dma.h"
+#include <thread>
 
 namespace GBEmu
 {
@@ -33,16 +34,21 @@ namespace GBEmu
 
         // Emulator Constructor
         Emulator();
+        // Emulator Deconstructor
+        ~Emulator();
 
         // Emulator Context
         bool paused;
-        bool running = true;
+        bool running = false;
         bool exit = false;
         u64 ticks;
 
 
         int run();
         int runCPU();
+        void stopCPU();
+        void InitializeEmu();
+        std::thread cpu_thread;
         void ClockCycle(int cpu_cycles);
     };
 }
