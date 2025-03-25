@@ -53,7 +53,7 @@ namespace GBEmu
         }
         else if (adress >= 0xFF40 && adress <= 0xFF4B)
         {
-            Emu->ppu.lcd_read(adress);
+            return Emu->ppu.lcd_read(adress);
         }
         else if (adress == 0xFF4F)
         {

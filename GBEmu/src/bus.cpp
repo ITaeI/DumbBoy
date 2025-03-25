@@ -21,10 +21,7 @@ namespace GBEmu
         }
         else if (addr < 0xA000 )
         {
-            //Char Map Data
-            //std::cout << "Char Map Data" << std::endl;
-            //NO_IMPL
-            return 0;
+            return Emu->ppu.VRAM[addr - 0x8000];
         }
         else if (addr < 0xC000)
         {
@@ -45,10 +42,7 @@ namespace GBEmu
         }
         else if (addr < 0xFEA0)
         {
-            //OAM
-            //std::cout << "OAM" << std::endl;
-            return 0;
-            //NO_IMPL
+            return Emu->ppu.oam.raw[addr - 0xFE00];
         }
         else if (addr < 0xFF00)
         {
@@ -58,14 +52,12 @@ namespace GBEmu
             //NO_IMPL
         }
         else if (addr < 0xFF80)
-        {
-            // IO Registers
-            //std::cout << "IO Registers" << " ";
+        {  
             return Emu->io.read(addr);
         }
         else if (addr == 0xFFFF)
         {
-            //CPU Enable Register
+            //CPU Interrupt Enable Register
             return Emu->processor.IE.read();
         }
         else
@@ -87,9 +79,9 @@ namespace GBEmu
             // - $8000-$97FF
             // - each tile taking 16 bytes
 
-            //adressing modes
-            // 0x8000 :
-            // 0x9000 :
+            // adressing modes (determined by LCDC bit 4)
+            // 0x8000 - 0x87FF : unsigned byte
+            // 0x8800 - 0x97FF : signed 
 
             // color ID (0 -> 3):
             // first byte == low bit
@@ -125,10 +117,7 @@ namespace GBEmu
             // screen coordinates of the top left corner of the Window are (WX-7,WY)
             // Whether the Window is displayed can be toggled using LCDC bit 5
 
-
-            //Char Map Data
-            //std::cout << "Char Map Data" << std::endl;
-            //NO_IMPL
+            Emu->ppu.VRAM[addr - 0x8000] = data;
         }
         else if (addr < 0xC000)
         {
@@ -195,6 +184,8 @@ namespace GBEmu
                     
                     // only occurs for opaque pixels
                     // highest Object priority attribute determines last drawn
+
+                Emu->ppu.oam.raw[addr-0xFE00] = data;
 
         }
         else if (addr < 0xFF00)

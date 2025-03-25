@@ -36,7 +36,7 @@ namespace GBEmu
     
     
             }o[40];
-            u8 raw_oam[160];
+
         }oam;
         
         u8 VRAM[0x2000];
@@ -55,7 +55,7 @@ namespace GBEmu
                 // 5: Window enable: 0 = Off; 1 = On
                     // switches if window is shown or not
                 // 4: BG & Window tile data area: 0 = 8800–97FF; 1 = 8000–8FFF
-                    // Chooses which adressing mode is being used OBJ always 0x8000 mode
+                    // Chooses which adressing mode is being used,  OBJ always 0x8000 mode
                 // 3: BG tile map area: 0 = 9800–9BFF; 1 = 9C00–9FFF
                     // switches between tile maps
                 // 2: OBJ size: 0 = 8×8; 1 = 8×16
@@ -126,5 +126,7 @@ namespace GBEmu
 
         void tick();
         void compare_LY_LYC();
+
+        void draw_pixel(u8 currentX);
     };
 }

@@ -34,13 +34,24 @@ namespace GBEmu
     int Emulator::runCPU()
     {
 
-        while (running && !exit)
+        while (!exit && !cpu_reset)
         {
-            if(!processor.step())
+            if (running)
             {
+                if (debug)
+                {
+                    if (Prev_step == false && step == true)
+                    {
+                        processor.step();
+                    }
+                    Prev_step = step;
+                }
+                else
+                {
+                    processor.step();
+                }
 
             }
-
         }
 
         return 0;
@@ -49,10 +60,12 @@ namespace GBEmu
     void Emulator::stopCPU()
     {
         running = false;
+        cpu_reset = true;
         if(cpu_thread.joinable())
         {
             cpu_thread.join();
         }
+        cpu_reset = false;
     }
 
     void Emulator::InitializeEmu()

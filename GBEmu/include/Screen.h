@@ -4,7 +4,6 @@
 namespace GBEmu
 {
     class Emulator; // forward declaration .. fun
-
     class Screen
     {
 
@@ -16,6 +15,7 @@ namespace GBEmu
         SDL_Window *window;
         SDL_Renderer *renderer;
         SDL_Texture *texture;
+        SDL_Surface *surface;
 
         Emulator *Emu;
         public:
@@ -29,6 +29,7 @@ namespace GBEmu
             window = nullptr;
             renderer = nullptr;
             texture = nullptr;
+            surface = nullptr;
         }
 
         //Screen destructor
@@ -41,6 +42,8 @@ namespace GBEmu
             //stop SDL3
             SDL_DestroyRenderer(renderer);
             SDL_DestroyWindow(window);
+            SDL_DestroyTexture(texture);
+            SDL_DestroySurface(surface);
             std::cout << "Quitting SDL" << std::endl;
             SDL_Quit();
         }
@@ -87,6 +90,12 @@ namespace GBEmu
         bool showCpuRegs = false;
         bool showLcdRegs = false;
         bool showTimerRegs = false;
+
+        // Render Tiles
+        void rendertiles();
+
+        // GB colors
+        Uint32 colors[4] = {0xFF000000, 0xFF555555, 0xFFAAAAAA, 0xFFFFFFFF};
 
         //Event Handling
         void pollForEvents();

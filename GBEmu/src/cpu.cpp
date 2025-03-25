@@ -29,6 +29,8 @@ namespace GBEmu
                     Emu->systemBus.write(0xFF02,0x00);
                     std::cout << "Debug Message: " << DBG << std::endl;
                 }
+
+ 
     
                 executeInstruction();
             }
@@ -718,7 +720,6 @@ namespace GBEmu
             case 0xFF: currentInstruction = Instruction("RST 38H", 1, 16); RST_u8(0x38); break;
             default: isHalted = true; break;
         }
-        //std::cout<< currentInstruction.mnemonic << std::endl;
 
     };
     

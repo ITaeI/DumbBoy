@@ -28,6 +28,10 @@ namespace GBEmu
         // Create Renderer
         renderer = SDL_CreateRenderer(window, NULL);
 
+        texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_TARGET, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+        surface = SDL_CreateSurface(SCREEN_WIDTH, SCREEN_HEIGHT, SDL_PIXELFORMAT_ABGR8888);
+
         // init imgui
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
@@ -36,6 +40,8 @@ namespace GBEmu
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+        io.FontGlobalScale = 2.0f;
 
         ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
         ImGui_ImplSDLRenderer3_Init(renderer);
@@ -50,18 +56,22 @@ namespace GBEmu
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
 
+
         // Main ImGui Render Windows
         renderMainWindow();
         if(GBWindowReady)
             renderGBScreen();
         if(DebugWindowReady)
+        {
             renderDebugWindow();
+            rendertiles(); 
+        }
 
 
+        ImGui::Render();
         SDL_SetRenderDrawColor(renderer, 0 , 0 , 0 , 0);
         SDL_RenderClear(renderer);
 
-        ImGui::Render();
         ImGui_ImplSDLRenderer3_RenderDrawData (ImGui::GetDrawData(), renderer);
         SDL_RenderPresent(renderer);
 
@@ -92,9 +102,8 @@ namespace GBEmu
                         
                         GBWindowReady = false;
                         // ToDo: change how to get roms into program
-                        Emu->cartridge.load("Super Mario Land (JUE) (V1.1) [!].gb");
+                        Emu->cartridge.load("Tetris (JUE) (V1.1) [!].gb");
                         // run CPU on a separate thread
-                        Emu->running = true;
                         Emu->cpu_thread = std::thread (&Emulator::runCPU, Emu);
 
                         // Signal UI to render GB Screen
@@ -112,11 +121,14 @@ namespace GBEmu
                         // ToDo: change how to get roms into program
                         Emu->cartridge.load("02-interrupts.gb");
                         // run CPU on a separate thread
-                        Emu->running = true;
                         Emu->cpu_thread = std::thread (&Emulator::runCPU, Emu);
 
                         // Signal UI to render GB Screen
                         GBWindowReady = true;
+                    }
+                    else if(ImGui::MenuItem("Run"))
+                    {
+                        Emu->running = true;
                     }
                     else if(ImGui::MenuItem("Exit"))
                     {
@@ -168,6 +180,9 @@ namespace GBEmu
             ImGui::Separator();
             if(showCpuRegs)
             {
+                ImGui::Text("Opcode : 0x%02X \t", Emu->processor.opcode);
+                ImGui::SameLine();
+                ImGui::Text("Instruction : %s", Emu->processor.currentInstruction.mnemonic.c_str());
                 if(ImGui::BeginTable("CPU Registers", 4, ImGuiTableFlags_None))
                 {
                     ImGui::TableSetupColumn("CPU Registers", ImGuiTableColumnFlags_NoResize);
@@ -236,43 +251,81 @@ namespace GBEmu
     
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
-                    ImGui::Text("AF");
+                    ImGui::Text("LCDC");
     
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("0x%02X", Emu->processor.reg.af.read());
+                    ImGui::Text("0x%02X", Emu->ppu.lcdRegs.LCDC.read());
     
                     ImGui::TableSetColumnIndex(2);
-                    ImGui::Text("BC");
+                    ImGui::Text("STAT");
     
                     ImGui::TableSetColumnIndex(3);
-                    ImGui::Text("0x%02X", Emu->processor.reg.bc.read());
+                    ImGui::Text("0x%02X", Emu->ppu.lcdRegs.STAT.read());
     
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
-                    ImGui::Text("DE");
+                    ImGui::Text("SCY");
     
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("0x%02X", Emu->processor.reg.de.read());
+                    ImGui::Text("0x%02X", Emu->ppu.lcdRegs.SCY.read());
     
                     ImGui::TableSetColumnIndex(2);
-                    ImGui::Text("HL");
+                    ImGui::Text("SCX");
     
                     ImGui::TableSetColumnIndex(3);
-                    ImGui::Text("0x%02X", Emu->processor.reg.hl.read());
+                    ImGui::Text("0x%02X", Emu->ppu.lcdRegs.SCX.read());
     
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
-                    ImGui::Text("SP");
+                    ImGui::Text("LY");
     
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("0x%02X", Emu->processor.reg.sp.read());
+                    ImGui::Text("0x%02X", Emu->ppu.lcdRegs.LY.read());
     
                     ImGui::TableSetColumnIndex(2);
-                    ImGui::Text("PC");
+                    ImGui::Text("LYC");
     
                     ImGui::TableSetColumnIndex(3);
-                    ImGui::Text("0x%02X", Emu->processor.reg.pc.read());
+                    ImGui::Text("0x%02X", Emu->ppu.lcdRegs.LYC.read());
+
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("DMA");
     
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("0x%02X", Emu->ppu.lcdRegs.DMA.read());
+    
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("BGP");
+    
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("0x%02X", Emu->ppu.lcdRegs.BGP.read());
+                    
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("OBP0");
+    
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("0x%02X", Emu->ppu.lcdRegs.OBP0.read());
+    
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("OBP1");
+    
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("0x%02X", Emu->ppu.lcdRegs.OBP1.read());
+
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("WY");
+    
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("0x%02X", Emu->ppu.lcdRegs.WY.read());
+    
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("WX");
+    
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("0x%02X", Emu->ppu.lcdRegs.WX.read());
     
                 }
                 ImGui::EndTable();
@@ -292,49 +345,101 @@ namespace GBEmu
     
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
-                    ImGui::Text("AF");
+                    ImGui::Text("DIV");
     
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("0x%02X", Emu->processor.reg.af.read());
+                    ImGui::Text("[ 0x%02X ]", Emu->timer.timerRegs.DIV.read());
     
                     ImGui::TableSetColumnIndex(2);
-                    ImGui::Text("BC");
+                    ImGui::Text("TIMA");
     
                     ImGui::TableSetColumnIndex(3);
-                    ImGui::Text("0x%02X", Emu->processor.reg.bc.read());
+                    ImGui::Text("[ 0x%02X ]", Emu->timer.timerRegs.TIMA.read());
     
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
-                    ImGui::Text("DE");
+                    ImGui::Text("TMA");
     
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("0x%02X", Emu->processor.reg.de.read());
+                    ImGui::Text("[ 0x%02X ]", Emu->timer.timerRegs.TMA.read());
     
                     ImGui::TableSetColumnIndex(2);
-                    ImGui::Text("HL");
+                    ImGui::Text("TAC");
     
                     ImGui::TableSetColumnIndex(3);
-                    ImGui::Text("0x%02X", Emu->processor.reg.hl.read());
-    
-                    ImGui::TableNextRow();
-                    ImGui::TableSetColumnIndex(0);
-                    ImGui::Text("SP");
-    
-                    ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("0x%02X", Emu->processor.reg.sp.read());
-    
-                    ImGui::TableSetColumnIndex(2);
-                    ImGui::Text("PC");
-    
-                    ImGui::TableSetColumnIndex(3);
-                    ImGui::Text("0x%02X", Emu->processor.reg.pc.read());
-    
+                    ImGui::Text("[ 0x%02X ]", Emu->timer.timerRegs.TAC.read());
+
     
                 }
                 ImGui::EndTable();
             }
+
+            ImGui::Separator();
+            if(ImGui::Button("Step"))
+            {
+                Emu->step = true;
+            }
+            else
+            {
+                Emu->step = false;
+            }
+            ImGui::SameLine();
+            ImGui::Checkbox("Debug", &Emu->debug);
+
         }
         ImGui::End();
+    }
+
+    void Screen::rendertiles()
+    {
+        // there are 384 tiles in total each 16 bytes each
+
+        // Grid Pattern: 16x24
+        u8 VramAdress = 0x8000;
+        int tile_number = 0;
+
+        for(int y = 0; y < 24; y++)
+        {
+            for(int x = 0; x < 16; x++)
+            {
+                // Draw tile to surface
+                SDL_Rect rect;
+                for(int tileLine = 0; tileLine < 16; tileLine += 2)
+                {
+                    u8 lo = Emu->ppu.VRAM[tile_number*16 + tileLine];
+                    u8 hi = Emu->ppu.VRAM[tile_number*16 + tileLine + 1];
+                    for(int k = 0; k < 8; k++)
+                    {
+                        u8 lo_bit = (lo >> (7-k)) & 1;
+                        u8 hi_bit = (hi >> (7-k)) & 1;
+                        u8 color_byte = (hi_bit << 1) | lo_bit;
+
+                        // Write Location of Rectangle
+                        rect.x = (x*8 + k)*4;
+                        rect.y = (y*8 + tileLine/2)*4;
+                        rect.w = 4;
+                        rect.h = 4;
+                        SDL_FillSurfaceRect(surface, &rect, colors[color_byte]);
+                    }
+                }
+                tile_number++;
+            } 
+        }
+        // Set Render target to texture
+        SDL_SetRenderTarget(renderer, texture);
+        // Update texture with surface
+        SDL_UpdateTexture(texture, NULL, surface->pixels, surface->pitch);
+        // set render target to NULL
+        SDL_SetRenderTarget(renderer, NULL);
+        // Draw texture to screen
+
+        ImGui::SetNextWindowDockID(dockID, ImGuiCond_FirstUseEver);
+        if(ImGui::Begin("Tiles", nullptr, ImGuiWindowFlags_NoCollapse))
+        {
+            ImGui::Image((ImTextureID)texture, ImVec2(SCREEN_WIDTH, SCREEN_HEIGHT));
+        }
+        ImGui::End();
+
     }
 
     void Screen::pollForEvents()

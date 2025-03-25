@@ -22,14 +22,14 @@ namespace GBEmu
 
 
 
-        // Write Object to PPU OAM
+        // Write Object to PPU OAM - in CGB Mode VRAM Can also be written to
         Emu->ppu.oam.raw[current_index] = Emu->systemBus.read( (startAdress << 8) | current_index);
         current_index++;
 
         // DMA takes 160 M cycles to complete
         if(current_index > 0x9F)
         {
-            current_index -= 0x00;
+            current_index = 0x00;
             in_progress = false;
         }
     }

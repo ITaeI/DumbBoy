@@ -23,7 +23,7 @@ namespace GBEmu
         timerRegs.DIV.Increment();
         bool falling_Edge_Check = false;
 
-        if(timerRegs.TAC.read() & 0b100)
+        if(timerRegs.TAC.read() & 0b100) // Third Bit is the enable bit
         {
             switch (timerRegs.TAC.read() & 0b11)
             {
@@ -44,7 +44,7 @@ namespace GBEmu
                 break;
             }
         }
-        if(falling_Edge_Check && timerRegs.TAC.read() & 0b100)
+        if(falling_Edge_Check && timerRegs.TAC.read() & 0b100) // probably can just put this in the first if statement
         {
             timerRegs.TIMA.Increment();
             if(timerRegs.TIMA.read() == 0xFF)

@@ -41,7 +41,14 @@ namespace GBEmu
         bool paused;
         bool running = false;
         bool exit = false;
+        bool cpu_reset = false;
         u64 ticks;
+
+        // Debug Bool
+        bool debug = false;
+        // Stepping Bools
+        bool Prev_step;
+        bool step;
 
 
         int run();
