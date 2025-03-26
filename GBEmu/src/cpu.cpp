@@ -30,7 +30,11 @@ namespace GBEmu
                     std::cout << "Debug Message: " << DBG << std::endl;
                 }
 
- 
+                // if(reg.pc.read() -1  == 0x7FF3)
+                // {
+                //     std::cout << "breakpoint" << std::endl;
+                //     Emu->debug =true;
+                // }
     
                 executeInstruction();
             }

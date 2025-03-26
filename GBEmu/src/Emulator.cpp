@@ -44,6 +44,10 @@ namespace GBEmu
                     {
                         processor.step();
                     }
+                    else
+                    {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    }
                     Prev_step = step;
                 }
                 else
@@ -51,6 +55,10 @@ namespace GBEmu
                     processor.step();
                 }
 
+            }
+            else
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
         }
 
@@ -92,7 +100,7 @@ namespace GBEmu
     int Emulator::run()
     {
         InitializeEmu();
-        screen.InitializeScreen("DumbBoy", 1280, 720);
+        screen.InitializeScreen("DumbBoy", 1280,800);
 
         while(!exit)
         {

@@ -14,7 +14,7 @@ namespace GBEmu
         if (adress == 0xFF00)
         {
             std::cout << "Joypad Input" << std::endl;
-            return 0;
+            return 0xCF;
             //NO_IMPL
         }
         else if (adress <= 0xFF02)
@@ -145,7 +145,7 @@ namespace GBEmu
         }
         else if (adress >= 0xFF40 && adress <= 0xFF4B)
         {
-            //std::cout << "LCD Control, Status, Position, Scrolling, and Palettes" << std::endl;
+            Emu->ppu.lcd_write(adress,data);
             //NO_IMPL
         }
         else if (adress == 0xFF4F)

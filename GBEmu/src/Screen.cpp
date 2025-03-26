@@ -56,7 +56,6 @@ namespace GBEmu
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
 
-
         // Main ImGui Render Windows
         renderMainWindow();
         if(GBWindowReady)
@@ -77,7 +76,7 @@ namespace GBEmu
 
 
         pollForEvents();
-
+        SDL_Delay(16); 
     }
 
     void Screen::renderMainWindow()
@@ -102,7 +101,7 @@ namespace GBEmu
                         
                         GBWindowReady = false;
                         // ToDo: change how to get roms into program
-                        Emu->cartridge.load("Tetris (JUE) (V1.1) [!].gb");
+                        Emu->cartridge.load("Super Mario Land (JUE) (V1.1) [!].gb");
                         // run CPU on a separate thread
                         Emu->cpu_thread = std::thread (&Emulator::runCPU, Emu);
 
@@ -119,7 +118,7 @@ namespace GBEmu
                         
                         GBWindowReady = false;
                         // ToDo: change how to get roms into program
-                        Emu->cartridge.load("02-interrupts.gb");
+                        Emu->cartridge.load("Tetris (JUE) (V1.1) [!].gb");
                         // run CPU on a separate thread
                         Emu->cpu_thread = std::thread (&Emulator::runCPU, Emu);
 
@@ -408,6 +407,7 @@ namespace GBEmu
                 {
                     u8 lo = Emu->ppu.VRAM[tile_number*16 + tileLine];
                     u8 hi = Emu->ppu.VRAM[tile_number*16 + tileLine + 1];
+
                     for(int k = 0; k < 8; k++)
                     {
                         u8 lo_bit = (lo >> (7-k)) & 1;
@@ -449,7 +449,6 @@ namespace GBEmu
         {
             // Process All IMGUI Window events
             ImGui_ImplSDL3_ProcessEvent(&event);
-
             switch(event.type)
             {
                 case SDL_EVENT_QUIT:
@@ -489,30 +488,6 @@ namespace GBEmu
                             break;
                     }
                     break;
-                case SDL_EVENT_MOUSE_BUTTON_DOWN:
-                    switch(event.button.button)
-                    {
-                        case SDL_BUTTON_LEFT:
-                            std::cout << "Left Mouse Down" << std::endl;
-                            break;
-                        case SDL_BUTTON_RIGHT:
-                            std::cout << "Right Mouse Down" << std::endl;
-                            break;
-                    }
-                    break;
-                
-                case SDL_EVENT_MOUSE_BUTTON_UP:
-                    switch(event.button.button)
-                    {
-                        case SDL_BUTTON_LEFT:
-                            std::cout << "Left Mouse UP" << std::endl;
-                            break;
-                        case SDL_BUTTON_RIGHT:
-                            std::cout << "Right Mouse UP" << std::endl;
-                            break;
-                    }
-                    break;
-
             }
         }
     }

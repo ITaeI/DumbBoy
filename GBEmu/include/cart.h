@@ -50,6 +50,29 @@ namespace GBEmu
         u8 *cart_romdata = nullptr;
         cart_header *header = nullptr;
 
+        // Rom Banks
+        u8 current_rom_bank = 1;
+
+        // Ram Banks
+        u8 ram_Banks[0x8000];
+        u8 current_ram_bank = 0;
+        bool ram_enabled;
+
+
+        // Initialize banks depending on the ROM type
+        void setupBanking();
+        // Cart type bools
+        bool MBC1 = false;
+        // - MBC1 Related Flags
+        u8 modeFlag;
+
+        void CalculateZeroBank();
+        void CalculateHighBank();
+        u8 ZeroBank;
+        u8 HighBank;
+
+
+        bool MBC2 = false;
 
         //Load a ROM file
         bool load(char *filename);

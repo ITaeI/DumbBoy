@@ -95,7 +95,7 @@ namespace GBEmu
         void rendertiles();
 
         // GB colors
-        Uint32 colors[4] = {0xFF000000, 0xFF555555, 0xFFAAAAAA, 0xFFFFFFFF};
+        Uint32 colors[4] = {0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000};
 
         //Event Handling
         void pollForEvents();

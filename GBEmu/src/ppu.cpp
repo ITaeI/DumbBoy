@@ -328,7 +328,7 @@ namespace GBEmu
                 break;
             case 0xFF41:
                 std::cout << "LCD Status" << std::endl;
-                lcdRegs.STAT.write((data & 0x78) | (lcdRegs.STAT.read() & 0x03)); // Bits 0-2 are read only
+                lcdRegs.STAT.write((data & 0xFC) | (lcdRegs.STAT.read() & 0x03)); // Bits 0-2 are read only
                 break;
             case 0xFF42:
                 std::cout << "Scroll Y" << std::endl;
@@ -347,7 +347,6 @@ namespace GBEmu
                 lcdRegs.LYC.write(data);
                 break;
             case 0xFF46:
-                std::cout << "DMA Transfer" << std::endl;
 
                 // DMA
                     // The value written to this register will kickoff direct memory access
