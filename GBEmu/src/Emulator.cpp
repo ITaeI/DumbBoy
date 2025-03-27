@@ -36,6 +36,7 @@ namespace GBEmu
 
         while (!exit && !cpu_reset)
         {
+
             if (running)
             {
                 if (debug)
@@ -53,12 +54,21 @@ namespace GBEmu
                 else
                 {
                     processor.step();
+
+                    // IDK about this yet but it lowers the cpu usage alot
+                    static auto last_sleep_time = std::chrono::steady_clock::now();
+                    auto now = std::chrono::steady_clock::now();
+                    if (std::chrono::duration_cast<std::chrono::milliseconds>(now - last_sleep_time).count() >= 2)
+                    {
+                        std::this_thread::sleep_for(std::chrono::microseconds(10));
+                        last_sleep_time = now;
+                    }
                 }
 
             }
             else
             {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
         }
 
@@ -100,7 +110,7 @@ namespace GBEmu
     int Emulator::run()
     {
         InitializeEmu();
-        screen.InitializeScreen("DumbBoy", 1280,800);
+        screen.InitializeScreen("DumbBoy", 1280,860);
 
         while(!exit)
         {

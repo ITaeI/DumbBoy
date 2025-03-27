@@ -42,6 +42,10 @@ namespace GBEmu
         }
         else if (addr < 0xFEA0)
         {
+            if(Emu->dma.in_progress)
+            {
+                return 0xFF;
+            }
             return Emu->ppu.oam.raw[addr - 0xFE00];
         }
         else if (addr < 0xFF00)
@@ -184,6 +188,11 @@ namespace GBEmu
                     
                     // only occurs for opaque pixels
                     // highest Object priority attribute determines last drawn
+
+                if(Emu->dma.in_progress)
+                {
+                    return;
+                }
 
                 Emu->ppu.oam.raw[addr-0xFE00] = data;
 

@@ -14,8 +14,14 @@ namespace GBEmu
         int SCREEN_HEIGHT;
         SDL_Window *window;
         SDL_Renderer *renderer;
-        SDL_Texture *texture;
-        SDL_Surface *surface;
+
+        // Tile Texture and Surface
+        SDL_Texture *tileTexture;
+        SDL_Surface *tileSurface;
+
+        // LCD Texture and surface
+        SDL_Texture *LCDTexture;
+        SDL_Surface *LCDSurface;
 
         Emulator *Emu;
         public:
@@ -28,8 +34,14 @@ namespace GBEmu
             SCREEN_HEIGHT = 0;
             window = nullptr;
             renderer = nullptr;
-            texture = nullptr;
-            surface = nullptr;
+
+            // Tile Texture and Surfaces
+            tileTexture = nullptr;
+            tileSurface = nullptr;
+
+            // LCD Texture and Surfaces
+            LCDTexture = nullptr;
+            LCDSurface = nullptr;
         }
 
         //Screen destructor
@@ -42,8 +54,13 @@ namespace GBEmu
             //stop SDL3
             SDL_DestroyRenderer(renderer);
             SDL_DestroyWindow(window);
-            SDL_DestroyTexture(texture);
-            SDL_DestroySurface(surface);
+
+
+            SDL_DestroyTexture(tileTexture);
+            SDL_DestroySurface(tileSurface);
+
+            SDL_DestroyTexture(LCDTexture);
+            SDL_DestroySurface(LCDSurface);
             std::cout << "Quitting SDL" << std::endl;
             SDL_Quit();
         }
@@ -84,14 +101,20 @@ namespace GBEmu
         void renderGBScreen();
         bool GBWindowReady = false;
 
+        // render Settings
+        void renderSettings();
+        bool ViewSettings  = false;
+        int TargetFPS = 60;
+
         //Debug Window
         void renderDebugWindow();
-        bool DebugWindowReady = false;
+        bool ViewRegisters = false;
         bool showCpuRegs = false;
         bool showLcdRegs = false;
         bool showTimerRegs = false;
 
         // Render Tiles
+        bool ViewTiles = false;
         void rendertiles();
 
         // GB colors

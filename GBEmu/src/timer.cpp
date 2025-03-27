@@ -20,7 +20,7 @@ namespace GBEmu
     {
         // Check for falling edge
         u16 div_prev = timerRegs.DIV.read();
-        timerRegs.DIV.Increment();
+        timerRegs.DIV.Increment(); 
         bool falling_Edge_Check = false;
 
         if(timerRegs.TAC.read() & 0b100) // Third Bit is the enable bit

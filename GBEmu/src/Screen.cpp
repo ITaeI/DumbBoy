@@ -27,10 +27,13 @@ namespace GBEmu
 
         // Create Renderer
         renderer = SDL_CreateRenderer(window, NULL);
+        SDL_SetRenderVSync(renderer, 1);
 
-        texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_TARGET, SCREEN_WIDTH, SCREEN_HEIGHT);
+        tileTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_TARGET, SCREEN_WIDTH, SCREEN_HEIGHT);
+        tileSurface = SDL_CreateSurface(SCREEN_WIDTH, SCREEN_HEIGHT, SDL_PIXELFORMAT_ABGR8888);
 
-        surface = SDL_CreateSurface(SCREEN_WIDTH, SCREEN_HEIGHT, SDL_PIXELFORMAT_ABGR8888);
+        LCDTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_TARGET, SCREEN_WIDTH, SCREEN_HEIGHT);
+        LCDSurface = SDL_CreateSurface(SCREEN_WIDTH, SCREEN_HEIGHT, SDL_PIXELFORMAT_ABGR8888);
 
         // init imgui
         IMGUI_CHECKVERSION();
@@ -52,6 +55,8 @@ namespace GBEmu
     void Screen::Update()
     {
 
+        Uint64 start = SDL_GetTicks();
+
         ImGui_ImplSDLRenderer3_NewFrame();
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
@@ -60,11 +65,12 @@ namespace GBEmu
         renderMainWindow();
         if(GBWindowReady)
             renderGBScreen();
-        if(DebugWindowReady)
-        {
+        if(ViewRegisters)
             renderDebugWindow();
+        if (ViewTiles)
             rendertiles(); 
-        }
+        if (ViewSettings)
+            renderSettings();
 
 
         ImGui::Render();
@@ -76,7 +82,10 @@ namespace GBEmu
 
 
         pollForEvents();
-        SDL_Delay(16); 
+
+        Uint64 ElapsedTime = SDL_GetTicks() - start;
+        if (ElapsedTime < 1000/TargetFPS)
+            SDL_Delay( (1000/TargetFPS) - (SDL_GetTicks() - start) ); 
     }
 
     void Screen::renderMainWindow()
@@ -135,11 +144,19 @@ namespace GBEmu
                     }
                     ImGui::EndMenu();
                 }
-                else if(ImGui::BeginMenu("Debug"))
+                else if(ImGui::BeginMenu("View"))
                 {
-                    if(ImGui::MenuItem("Debug Window"))
+                    if(ImGui::MenuItem("Registers"))
                     {
-                        DebugWindowReady = true;
+                        ViewRegisters = !ViewRegisters;
+                    }
+                    else if(ImGui::MenuItem("Tiles"))
+                    {
+                        ViewTiles = !ViewTiles;
+                    }
+                    else if(ImGui::MenuItem("Settings"))
+                    {
+                        ViewSettings = !ViewSettings;
                     }
                     ImGui::EndMenu();
                 }
@@ -397,55 +414,79 @@ namespace GBEmu
         u8 VramAdress = 0x8000;
         int tile_number = 0;
 
-        for(int y = 0; y < 24; y++)
+        // Update the Tile Screen less often
+        static auto lastTileUpdate = std::chrono::steady_clock::now();
+        auto currentTime = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastTileUpdate).count();
+
+        if (elapsed >= 128)
         {
-            for(int x = 0; x < 16; x++)
+            for(int y = 0; y < 24; y++)
             {
-                // Draw tile to surface
-                SDL_Rect rect;
-                for(int tileLine = 0; tileLine < 16; tileLine += 2)
+                for(int x = 0; x < 16; x++)
                 {
-                    u8 lo = Emu->ppu.VRAM[tile_number*16 + tileLine];
-                    u8 hi = Emu->ppu.VRAM[tile_number*16 + tileLine + 1];
-
-                    for(int k = 0; k < 8; k++)
+                    // Draw tile to surface
+                    SDL_Rect rect;
+                    for(int tileLine = 0; tileLine < 16; tileLine += 2)
                     {
-                        u8 lo_bit = (lo >> (7-k)) & 1;
-                        u8 hi_bit = (hi >> (7-k)) & 1;
-                        u8 color_byte = (hi_bit << 1) | lo_bit;
+                        u8 lo = Emu->ppu.VRAM[tile_number*16 + tileLine];
+                        u8 hi = Emu->ppu.VRAM[tile_number*16 + tileLine + 1];
 
-                        // Write Location of Rectangle
-                        rect.x = (x*8 + k)*4;
-                        rect.y = (y*8 + tileLine/2)*4;
-                        rect.w = 4;
-                        rect.h = 4;
-                        SDL_FillSurfaceRect(surface, &rect, colors[color_byte]);
+                        for(int k = 0; k < 8; k++)
+                        {
+                            u8 lo_bit = (lo >> (7-k)) & 1;
+                            u8 hi_bit = (hi >> (7-k)) & 1;
+                            u8 color_byte = (hi_bit << 1) | lo_bit;
+
+                            // Write Location of Rectangle
+                            rect.x = (x*8 + k)*4;
+                            rect.y = (y*8 + tileLine/2)*4;
+                            rect.w = 4;
+                            rect.h = 4;
+                            SDL_FillSurfaceRect(tileSurface, &rect, colors[color_byte]);
+                        }
                     }
-                }
-                tile_number++;
-            } 
+                    tile_number++;
+                } 
+            }
+            // Set Render target to texture
+            SDL_SetRenderTarget(renderer, tileTexture);
+
+            //Update texture with surface
+
+            SDL_UpdateTexture(tileTexture, NULL, tileSurface->pixels, tileSurface->pitch);
+
+            SDL_SetRenderTarget(renderer, NULL);
+
+            lastTileUpdate = currentTime;
+
         }
-        // Set Render target to texture
-        SDL_SetRenderTarget(renderer, texture);
-        // Update texture with surface
-        SDL_UpdateTexture(texture, NULL, surface->pixels, surface->pitch);
-        // set render target to NULL
-        SDL_SetRenderTarget(renderer, NULL);
         // Draw texture to screen
 
         ImGui::SetNextWindowDockID(dockID, ImGuiCond_FirstUseEver);
-        if(ImGui::Begin("Tiles", nullptr, ImGuiWindowFlags_NoCollapse))
+        if(ImGui::Begin("Tiles", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
         {
-            ImGui::Image((ImTextureID)texture, ImVec2(SCREEN_WIDTH, SCREEN_HEIGHT));
+            ImGui::Image((ImTextureID)tileTexture, ImVec2(SCREEN_WIDTH, SCREEN_HEIGHT)); 
         }
         ImGui::End();
 
     }
 
+    void Screen::renderSettings()
+    {
+        ImGui::SetNextWindowDockID(dockID, ImGuiCond_FirstUseEver);
+
+        if(ImGui::Begin("Settings", nullptr, ImGuiWindowFlags_NoCollapse))
+        {
+            ImGui::InputInt("Target FPS", &TargetFPS, 5, 100, ImGuiInputTextFlags_None);
+        }
+        ImGui::End();
+    }
+
     void Screen::pollForEvents()
     {
         SDL_Event event;
-        while (SDL_PollEvent(&event))
+        while (SDL_WaitEventTimeout(&event,1))
         {
             // Process All IMGUI Window events
             ImGui_ImplSDL3_ProcessEvent(&event);

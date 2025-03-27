@@ -282,10 +282,7 @@ namespace GBEmu
 
                 return lcdRegs.LYC.read();
             case 0xFF46:
-                if(Emu->dma.in_progress)
-                {
-                    return 0xFF;
-                }
+            
                 return lcdRegs.DMA.read();
             case 0xFF47:
                 // Background palette
