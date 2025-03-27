@@ -7,6 +7,7 @@
 - [Features](#features)
 - [Installation](#installation)
 - [Usage](#usage)
+- [Resources](#resources)
 
 
 ## Overview
@@ -29,4 +30,11 @@ A fun side project on emulating an original Gameboy (and possibly Gameboy color)
 (WIP)
 - Need Cmake installed
 - Currently need to copy SDL3.dll into build folder (Either Release or Debug)
+
+## Resources
+
+- Pandocs: https://gbdev.io/pandocs/
+- Opcode Reference: https://rgbds.gbdev.io/docs/v0.9.1/gbz80.7
+- Opcode Tables: https://gbdev.io/gb-opcodes/optables/
+- General GB Emulator Guide: https://hacktix.github.io/GBEDG/
 
