@@ -9,6 +9,11 @@ namespace GBEmu
     {
         private:
         Emulator *Emu;
+
+        // TIMA Overflow Logic
+        bool TIMAOverflowOccured = false;
+        int overflowCounter = 0;
+
         public:
         struct TimerRegs
         {

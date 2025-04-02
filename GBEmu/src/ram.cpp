@@ -11,8 +11,8 @@ namespace GBEmu
 
     void RAM::init()
     {
-        wram[0x2000] = {0x00};
-        hram[0x80] = {0x00};
+        memset(wram, 0, sizeof(wram));
+        memset(hram, 0, sizeof(hram));
     }
 
     u8 RAM::read_wram(u16 adress)

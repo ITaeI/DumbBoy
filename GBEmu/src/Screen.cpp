@@ -17,6 +17,7 @@ namespace GBEmu
         title = Name; SCREEN_WIDTH = Width; SCREEN_HEIGHT = Height;
         SDL_SetAppMetadata("GBEmu", "1.0", "ITaeI");
 
+        // Initialize SDL
         if (!SDL_Init(SDL_INIT_VIDEO)) {
             SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
             return SDL_APP_FAILURE;
@@ -29,11 +30,15 @@ namespace GBEmu
         renderer = SDL_CreateRenderer(window, NULL);
         SDL_SetRenderVSync(renderer, 1);
 
-        tileTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_TARGET, SCREEN_WIDTH, SCREEN_HEIGHT);
-        tileSurface = SDL_CreateSurface(SCREEN_WIDTH, SCREEN_HEIGHT, SDL_PIXELFORMAT_ABGR8888);
+        // Create Separate Textures and surfaces for LCD BG and Tile Windows
+        tileTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_TARGET, imageWidths[Tiles], imageHeights[Tiles]);
+        tileSurface = SDL_CreateSurface(imageWidths[Tiles], imageHeights[Tiles], SDL_PIXELFORMAT_ABGR8888);
 
-        LCDTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_TARGET, SCREEN_WIDTH, SCREEN_HEIGHT);
-        LCDSurface = SDL_CreateSurface(SCREEN_WIDTH, SCREEN_HEIGHT, SDL_PIXELFORMAT_ABGR8888);
+        LCDTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_TARGET, imageWidths[GBScreen], imageHeights[GBScreen]);
+        LCDSurface = SDL_CreateSurface(imageWidths[GBScreen], imageHeights[GBScreen], SDL_PIXELFORMAT_ABGR8888);
+
+        BGTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_TARGET, imageWidths[Background], imageHeights[Background]);
+        BGSurface = SDL_CreateSurface(imageWidths[Background], imageHeights[Background], SDL_PIXELFORMAT_ABGR8888);
 
         // init imgui
         IMGUI_CHECKVERSION();
@@ -66,9 +71,11 @@ namespace GBEmu
         if(GBWindowReady)
             renderGBScreen();
         if(ViewRegisters)
-            renderDebugWindow();
+            renderRegistersWindow();
         if (ViewTiles)
             rendertiles(); 
+        if (ViewBackground)
+            renderBG();
         if (ViewSettings)
             renderSettings();
 
@@ -95,7 +102,7 @@ namespace GBEmu
         ImGui::SetNextWindowPos(viewport->Pos);
         ImGui::SetNextWindowSize(viewport->Size);
 
-        if(ImGui::Begin("Basic Window", nullptr, main_window_flags))
+        if(ImGui::Begin("DockWindow", nullptr, main_window_flags))
         {
             if(ImGui::BeginMenuBar())
             {
@@ -127,7 +134,7 @@ namespace GBEmu
                         
                         GBWindowReady = false;
                         // ToDo: change how to get roms into program
-                        Emu->cartridge.load("Tetris (JUE) (V1.1) [!].gb");
+                        Emu->cartridge.load("02-interrupts.gb");
                         // run CPU on a separate thread
                         Emu->cpu_thread = std::thread (&Emulator::runCPU, Emu);
 
@@ -158,6 +165,10 @@ namespace GBEmu
                     {
                         ViewSettings = !ViewSettings;
                     }
+                    else if(ImGui::MenuItem("Background"))
+                    {
+                        ViewBackground = !ViewBackground;
+                    }
                     ImGui::EndMenu();
                 }
                 ImGui::EndMenuBar();
@@ -173,18 +184,52 @@ namespace GBEmu
 
     }
 
+    void Screen::DrawPixel(u8 x, u8 y, u8 color)
+    {
+        SDL_Rect rect;
+        rect.x = x * 4;
+        rect.y = y * 4;
+        rect.h = 4;
+        rect.w = 4;
+
+        SDL_FillSurfaceRect(LCDSurface, &rect, colors[color]);
+
+    }
+
     void Screen::renderGBScreen()
     {
+        for(int y = 0; y < 144; y++)
+        {
+            for(int x = 0; x< 160; x++)
+            {
+                DrawPixel(x,y,Emu->ppu.ScreenBuffer[y*160 + x - 1]);
+            }
+        }
+
+        // Set Render target to texture
+        SDL_SetRenderTarget(renderer, LCDTexture);
+
+        //Update texture with surface
+        SDL_UpdateTexture(LCDTexture, NULL, LCDSurface->pixels, LCDSurface->pitch);
+
+        SDL_SetRenderTarget(renderer, NULL);
+
+        
         ImGui::SetNextWindowDockID(dockID, ImGuiCond_FirstUseEver);
-        ImGui::Begin(Emu->cartridge.cart_filename , nullptr, ImGuiWindowFlags_NoCollapse);
+        if(ImGui::Begin(Emu->cartridge.cart_filename , nullptr, ImGuiWindowFlags_NoCollapse))
+        {   
+            ImVec2 WindowSize = CalculateImageSize(160,144);
+
+            ImGui::Image((ImTextureID)LCDTexture, WindowSize); 
+        }
 
         ImGui::End();
     }
 
-    void Screen::renderDebugWindow()
+    void Screen::renderRegistersWindow()
     {
         ImGui::SetNextWindowDockID(dockID, ImGuiCond_FirstUseEver);
-        if(ImGui::Begin("Debug Window", nullptr, ImGuiWindowFlags_NoCollapse))
+        if(ImGui::Begin("Registers", nullptr, ImGuiWindowFlags_NoCollapse))
         {
 
             ImGui::Checkbox("Cpu Registers", &showCpuRegs);
@@ -466,10 +511,126 @@ namespace GBEmu
         ImGui::SetNextWindowDockID(dockID, ImGuiCond_FirstUseEver);
         if(ImGui::Begin("Tiles", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
         {
-            ImGui::Image((ImTextureID)tileTexture, ImVec2(SCREEN_WIDTH, SCREEN_HEIGHT)); 
+            ImVec2 WindowSize = CalculateImageSize(16.0f,24.0f);
+            ImGui::Image((ImTextureID)tileTexture, WindowSize); 
         }
         ImGui::End();
 
+    }
+
+    void Screen::renderBG()
+    {
+        static auto lastTileUpdate = std::chrono::steady_clock::now();
+        auto currentTime = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastTileUpdate).count();
+
+        // Used For manual swapping between Tile Maps
+        u16 BG_Data_Start = 0x8000;
+        if(DataSelect)
+        {
+            BG_Data_Start = 0x9000;
+        }
+
+        u16 BG_Map_Start = 0x9800;
+        if(MapSelect)
+        {
+            BG_Map_Start = 0x9C00;
+        }
+
+        // 0 = 9800–9BFF; 1 = 9C00–9FFF MAP
+        if(elapsed >= 128)
+        {
+            // 32 By 32 Tile Map Made Up of Window and Background Tiles
+            for(int y = 0; y<32; y++)
+            {
+                for(int x = 0; x<32; x++)
+                {
+
+                    Sint16 tileIndex = 0;
+                    if (DataSelect)
+                    {
+
+                        tileIndex = (Sint8)Emu->ppu.VRAM[(BG_Map_Start + x + y*32) - 0x8000]; 
+                    }
+                    else
+                    {
+                        tileIndex = (u8)Emu->ppu.VRAM[(BG_Map_Start + x + y*32) - 0x8000]; 
+                    } 
+    
+                    SDL_Rect rect;
+                    for(int i = 0; i < 8; i++)
+                    {
+                        u8 lo = Emu->ppu.VRAM[(BG_Data_Start+(tileIndex*16) + i*2) - 0x8000];
+                        u8 hi = Emu->ppu.VRAM[(BG_Data_Start+(tileIndex*16) + i*2 +1) - 0x8000];
+
+                        for(int j = 0; j < 8; j++)
+                        {
+
+                            u8 lo_bit = (lo >> (7-j)) & 1;
+                            u8 hi_bit = (hi >> (7-j)) & 1;
+                            u8 color_byte = (hi_bit << 1) | lo_bit;
+
+                            rect.x = (x*8 + j)*4;
+                            rect.y = (y*8 + i)*4;
+                            rect.w = 4;
+                            rect.h = 4;
+                            SDL_FillSurfaceRect(BGSurface, &rect, colors[color_byte]);
+
+                        }
+                    }
+                } 
+            }
+            // Set Render target to texture
+            SDL_SetRenderTarget(renderer, BGTexture);
+            //Update texture with surface
+            SDL_UpdateTexture(BGTexture, NULL, BGSurface->pixels, BGSurface->pitch);
+            SDL_SetRenderTarget(renderer, NULL);
+            lastTileUpdate = currentTime;
+        }
+
+        ImGui::SetNextWindowDockID(dockID, ImGuiCond_FirstUseEver);
+        if(ImGui::Begin("Background", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar))
+        {
+            ImVec2 WindowSize = CalculateImageSize(32,32);
+            ImGui::Image((ImTextureID)BGTexture, WindowSize); 
+            if (ImGui::RadioButton("Data 0x8000", DataSelect == 0))
+            {
+                DataSelect = 0;
+            }
+            ImGui::SameLine();
+            if (ImGui::RadioButton("Data 0x8800", DataSelect == 1))
+            {
+                DataSelect = 1;
+            }
+
+            if (ImGui::RadioButton("Map 9800", MapSelect == 0))
+            {
+                MapSelect = 0;
+            }
+            ImGui::SameLine();
+            if (ImGui::RadioButton("Map 9C00", MapSelect == 1))
+            {
+                MapSelect = 1;
+            }
+        }
+        ImGui::End();
+    }
+
+    ImVec2 Screen::CalculateImageSize(float W, float H)
+    {
+        ImVec2 avail= ImGui::GetContentRegionAvail();
+        // Compute the ratio (width / height) for your image.
+        float targetAspect = W / H;
+
+        // Choose size based on available width and height.
+        float width = avail.x;
+        float height = width / targetAspect;
+        if (height > avail.y)
+        { 
+            height = avail.y;
+            width = height * targetAspect;
+        }
+        return ImVec2(width,height);
     }
 
     void Screen::renderSettings()
