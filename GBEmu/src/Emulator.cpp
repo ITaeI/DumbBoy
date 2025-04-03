@@ -41,34 +41,32 @@ namespace GBEmu
             {
                 if (debug)
                 {
-                    if (Prev_step == false && step == true)
+                    if (step)
+                    {
+                        step_request = true;
+                        step = false;
+                    }
+
+                    if (step_request)
                     {
                         processor.step();
+                        step_request = false;
                     }
                     else
                     {
                         std::this_thread::sleep_for(std::chrono::milliseconds(1));
                     }
-                    Prev_step = step;
                 }
                 else
                 {
                     processor.step();
 
-                    // IDK about this yet but it lowers the cpu usage alot
-                    static auto last_sleep_time = std::chrono::steady_clock::now();
-                    auto now = std::chrono::steady_clock::now();
-                    if (std::chrono::duration_cast<std::chrono::milliseconds>(now - last_sleep_time).count() >= 2)
-                    {
-                        std::this_thread::sleep_for(std::chrono::microseconds(10));
-                        last_sleep_time = now;
-                    }
                 }
 
             }
             else
             {
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
         }
 

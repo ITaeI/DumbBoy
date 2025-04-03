@@ -23,6 +23,21 @@ namespace GBEmu
         SDL_Texture *LCDTexture;
         SDL_Surface *LCDSurface;
 
+        // BG Texture and surface
+        SDL_Texture *BGTexture;
+        SDL_Surface *BGSurface;
+
+        float imageWidths[3] = {640, 512, 1024};
+        float imageHeights[3] = {576, 768, 1024};
+
+        enum images
+        {
+            GBScreen = 0,
+            Tiles = 1,
+            Background = 2,
+
+        }images;
+
         Emulator *Emu;
         public:
 
@@ -42,6 +57,9 @@ namespace GBEmu
             // LCD Texture and Surfaces
             LCDTexture = nullptr;
             LCDSurface = nullptr;
+
+            BGTexture = nullptr;
+            BGSurface = nullptr;
         }
 
         //Screen destructor
@@ -61,6 +79,9 @@ namespace GBEmu
 
             SDL_DestroyTexture(LCDTexture);
             SDL_DestroySurface(LCDSurface);
+
+            SDL_DestroyTexture(BGTexture);
+            SDL_DestroySurface(BGSurface);
             std::cout << "Quitting SDL" << std::endl;
             SDL_Quit();
         }
@@ -86,7 +107,7 @@ namespace GBEmu
         /**********************************************************************************************************/
 
 
-        // --- Main Screen Update Loop --- //
+        // ------------------ Main Screen Update Loop -------------------------- //
         void Update();
 
         //Update Components:
@@ -97,17 +118,18 @@ namespace GBEmu
         void renderMainWindow();
         ImGuiID dockID;
 
-        //Game Screen - Output of GB Tiles and Sprites
+        // Game Screen - Output of GB Tiles and Sprites
         void renderGBScreen();
+        void DrawPixel(u8 x, u8 y, u8 color);
         bool GBWindowReady = false;
 
-        // render Settings
+        // Settings Screen
         void renderSettings();
         bool ViewSettings  = false;
         int TargetFPS = 60;
 
-        //Debug Window
-        void renderDebugWindow();
+        //  
+        void renderRegistersWindow();
         bool ViewRegisters = false;
         bool showCpuRegs = false;
         bool showLcdRegs = false;
@@ -117,8 +139,25 @@ namespace GBEmu
         bool ViewTiles = false;
         void rendertiles();
 
+        // Render Background
+        bool ViewBackground = false;
+        void renderBG();
+
+        // Either Tile Map at 8800 0r 8000
+        bool MapSelect = 0;
+        bool DataSelect = 0;
+
+        //Render Sprite Data
+        bool ViewSpriteData = false;
+        void renderSprites();
+
+
         // GB colors
         Uint32 colors[4] = {0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000};
+
+        // Aspect Ratio Calculation
+        ImVec2 CalculateImageSize(float W, float H);
+        ImVec2 CalculateScreenLocation();
 
         //Event Handling
         void pollForEvents();

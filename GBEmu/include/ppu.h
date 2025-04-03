@@ -1,6 +1,7 @@
 #pragma once
 #include "common.h"
 #include "registers.h"
+#include <array>
 
 
 namespace GBEmu
@@ -27,12 +28,13 @@ namespace GBEmu
                 u8 X; //Object's horizontal position + 8 (hidden x<0 || x>168)
                 u8 tile; // Tile location 
     
-                u8 Priority : 1;
-                u8 YFlip : 1;
-                u8 XFlip : 1;
-                u8 Palette : 1;
-                u8 Bank_No : 1;
                 u8 CGB_Palette : 3;
+                u8 Bank_No : 1;
+                u8 Palette : 1;
+                u8 XFlip : 1;
+                u8 YFlip : 1;
+                u8 Priority : 1; // This gets passed to FIFO entry
+
     
     
             }o[40];
@@ -127,6 +129,27 @@ namespace GBEmu
         void tick();
         void compare_LY_LYC();
 
-        void draw_pixel(u8 currentX);
+        // OAM Search - Essentially checks the current scanline for up to 10 Sprites
+        void ScanOAM();
+        std::vector<int> ScanlineObjects;
+
+
+        // FIFO pixel Fetcher Functions/variables
+        void fetchBGPixel(u8 currentX);
+        void fetchSpritePixel(u8 currentX);
+        void PushPixelToLCD(u8 currentX);
+        u8 ScreenBuffer[0x5A00];
+
+        struct FIFO_Entry
+        {
+            u8 color; // 0-3
+            u8 pallete; // OBP1 or OBP2 (DMG) - 0-7 (CGB)
+            u8 spritePriority; // only for Sprites on CGB
+            u8 BackgroundPriority; // keeps bit 7 of Sprite
+        };
+        
+        // FIFO arrays
+        std::array<FIFO_Entry, 8> FIFO_BG;
+        std::array<FIFO_Entry, 8> FIFO_SPR;
     };
 }

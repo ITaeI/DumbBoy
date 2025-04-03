@@ -1,5 +1,6 @@
 #include "ppu.h"
 #include "Emulator.h"
+#include <algorithm>
 
 
 namespace GBEmu
@@ -8,11 +9,12 @@ namespace GBEmu
     {
         Emu = emu;
     }
+
     void PPU::init()
     {
         // Reset For new use
         memset(VRAM, 0, 0x2000 * sizeof(u8));
-        memset(oam.raw, 0, 160 * sizeof(u8));
+        memset(ScreenBuffer, 0, 0x5A00 * sizeof(u8)); // used only for debugging atm
         Mode = 2;
         dots = 0;
 
@@ -32,7 +34,6 @@ namespace GBEmu
     {
         // A single frame is 70224 Dots
         dots += 1; // Dots occur once every 4 M cycles  
-
         // Check if PPU is enabled
         if(!lcdRegs.LCDC.readBit(7))
         {
@@ -105,6 +106,7 @@ namespace GBEmu
 
                 if(dots >= 80)
                 {
+                    ScanOAM();
                     dots -= 80;
                     Mode = 3;
                     lcdRegs.STAT.write((lcdRegs.STAT.read() & 0xFC) | Mode);
@@ -113,13 +115,13 @@ namespace GBEmu
             case 3: // During Mode 3, by default the PPU outputs one pixel to the screen per dot, 
                     //from left to right; the screen is 160 pixels wide, 
                     //so the minimum Mode 3 length is 160 + 12 = 172 dots.
-                if (dots > 12)
+                if (dots >= 12 && dots < 172)
                 {
-                    // Draw Pixel
-
+                    PushPixelToLCD(dots - 12);
                 }
-                if(dots >= 172)
+                else if(dots >= 172)
                 {
+                    dots -= 172;
                     Mode = 0;
                     lcdRegs.STAT.write((lcdRegs.STAT.read() & 0xFC) | Mode);
                     if(lcdRegs.STAT.readBit(3))
@@ -144,16 +146,32 @@ namespace GBEmu
         } 
     } 
 
-    void PPU::draw_pixel(u8 currentX)
+    void PPU::ScanOAM()
     {
-        // Check to see which tile map we are using (BG or Window)
+        u8 ObjHeight = lcdRegs.LCDC.readBit(2) ? 16 : 8;
+        ScanlineObjects.clear();
+        // OAM has 40 entries 
+        for(int i = 0; i < 40; i++)
+        {
+            // Check to see if an obj or sprite is on the current scanline
+            if (oam.o[i].X != 0 && lcdRegs.LY.read() + 16 >= oam.o[i].Y && lcdRegs.LY.read() + 16 <= oam.o[i].Y + ObjHeight - 1)
+            {
+                ScanlineObjects.emplace_back(i);
+            }
 
-        // Default Tile Map (0x9800)
-        u16 tileMap = 0x9800;
+            // We log the first 10 then return
+            if(ScanlineObjects.size() == 10)
+            {
+                return;
+            }
 
-        // These are tile coordinates
-        u8 fetcherX = 0;
-        u8 fetcherY = 0;
+        }
+    }
+
+    void PPU::fetchBGPixel(u8 currentX)
+    {
+        u16 tileMap = 0x9800; // Default Tile Map
+        u16 tileData = 0x9000; // Default Tile Data
 
         bool CurrentTileIsWindow = false;
 
@@ -161,7 +179,7 @@ namespace GBEmu
         if (lcdRegs.LCDC.readBit(5)) // First Check if window is enabled
         {
             // Now check if we are within the window bounds
-            if (lcdRegs.LY.read() >=  lcdRegs.WY.read() && currentX >= lcdRegs.WX.read())
+            if ((lcdRegs.LY.read()  >=  lcdRegs.WY.read() && lcdRegs.LY.read()  <=  lcdRegs.WY.read() + 31) && (currentX >= lcdRegs.WX.read()-7 && currentX <= lcdRegs.WX.read() + 24))
             {
                 CurrentTileIsWindow = true;
 
@@ -173,92 +191,144 @@ namespace GBEmu
             }
 
         }
-
-        if (!CurrentTileIsWindow && lcdRegs.LCDC.readBit(3)) // Check to see if Background is using the second tile map
+        
+        // Check to see if Background is using the second tile map
+        if (!CurrentTileIsWindow && lcdRegs.LCDC.readBit(3))
         {
             tileMap = 0x9C00;
         }
 
-        // Now Check which Tile Data we want to read from
-        u8 tileData = 0x8000;
+        // Now Check which Tile Data/Adressing style we are using
         if (lcdRegs.LCDC.readBit(4))
         {
-            tileData = 0x9000;
+            tileData = 0x8000;
         }
 
-        // Update the fetcher's X and Y according to current tile:
+        // Lets Grab Our Scroll and Window Values
 
-        //  --- https://gbdev.io/pandocs/pixel_fifo.html --- \\
+        u8 scrollX = lcdRegs.SCX.read();
+        u8 scrollY = lcdRegs.SCY.read();
+        u8 windowX = lcdRegs.WX.read()-7;
+        u8 windowY = lcdRegs.WY.read();
 
-        //If the current tile is a window tile, the X coordinate for the window tile is used, 
-        //otherwise the following formula is used to calculate the 
-        //X coordinate: ((SCX / 8) + fetcher’s X coordinate) & $1F. Because of this formula, 
-        //fetcherX can be between 0 and 31.
+        // intialize our x and y positions
+        u8 yPos = 0;
+        u8 xPos = currentX;
 
-        //If the current tile is a window tile, the Y coordinate for the window tile is used, 
-        //otherwise the following formula is used to calculate the 
-        //Y coordinate: (currentScanline + SCY) & 255. Because of this formula, 
-        //fetcherY can be between 0 and 255.
-
-        u8 Xpos = 0;
-        u8 Ypos = 0;
-
-        // Get XY Coords for Tile 
-        Xpos = currentX + lcdRegs.SCX.read();
-        Ypos = lcdRegs.LY.read() + lcdRegs.SCY.read();
-
-        // if current tile is window convert to window coords
+        // Depending on the tile type The position is altered
         if (CurrentTileIsWindow)
         {
-            Xpos -= lcdRegs.WX.read();
-            Ypos = lcdRegs.LY.read() - lcdRegs.WY.read();
+            xPos -= windowX;
+            yPos = (lcdRegs.LY.read() - windowY);
+        }
+        else
+        {
+            xPos += scrollX;
+            yPos = (scrollY + lcdRegs.LY.read() );
         }
 
-        // From these X and Y positions we can determine the Row and column of the tile in the tile map
-        u8 tileRow = (Ypos /8) *32;
-        u8 tileCol = (Xpos /8);
+        // Now depending on Adressing mode we use signed or unsigned tile number
+        Sint16 tile_index = 0;
 
-        // Depending on the tileData we use a different addressing mode
-
-        Sint8 tileIndex = Emu->io.read(tileMap + tileRow + tileCol);
         if(tileData == 0x8000)
         {
-            tileIndex = static_cast<u8>(tileIndex);
+            tile_index =  (u8)VRAM[tileMap + ((yPos)/8 *32) + (xPos)/8 - 0x8000];
+        }
+        else
+        {
+            tile_index =  (Sint8)VRAM[tileMap + ((yPos)/8 *32) + (xPos)/8 - 0x8000];
         }
 
-        // Extract data with tile coords
+        // We now need to grab the hi and lo byte to mix them to get the color
+        // of the 8 pixels we are grabbing
+        u8 lo = VRAM[tileData+ (tile_index*16) +((yPos)%8) *2 - 0x8000];
+        u8 hi = VRAM[tileData + (tile_index*16) +((yPos)%8) *2 + 1 - 0x8000];
 
-        u8 tileY = (Ypos % 8) * 2; // since there is two bytes per row
-        u8 tileX = Xpos % 8;
+        // we only need one pixel at the moment which depends on the current X position
+        u8 lo_bit = (lo >> (7-(xPos)%8)) & 1;
+        u8 hi_bit = (hi >> (7-(xPos)%8)) & 1;
 
-        // Now time to extract the tile data
-        u8 lo = Emu->io.read(tileData+ (tileIndex *16) + tileY);
-        u8 hi = Emu->io.read(tileData+ (tileIndex *16) + tileY + 1);
+        u8 color_byte = (hi_bit << 1) | lo_bit;
 
+        // We now move the final color byte to the BG FIFO
 
-
-
-        // if (CurrentTileIsWindow)
-        // {
-        //     fetcherX = lcdRegs.WX.read();  
-        //     fetcherY = lcdRegs.WY.read();
-        // }
-        // else // Get X Y coords for Background 
-        // {
-        //     fetcherX = ((lcdRegs.SCX.read() / 8) + (currentX % 8)) & 0x1F;
-        //     fetcherY = (lcdRegs.LY.read() + lcdRegs.SCY.read()) & 255;
-        // }
-
-
-
-
-
-
-
-        
-
-
+        ScreenBuffer[currentX + lcdRegs.LY.read() * 160] = color_byte;
     }
+
+    void PPU::fetchSpritePixel(u8 currentX)
+    {
+        u8 Tile = 0;
+        u8 SpriteX = 0;
+        u8 SpriteY = 0;
+        u8 SpriteHeight = 0;
+
+        // Loop through our OAM Scan
+        for (auto object : ScanlineObjects)
+        {
+            if (currentX + 8 >= oam.o[object].X && currentX + 8 <= oam.o[object].X + 7)
+            {
+                // Grab the Tile Location from OAM
+                Tile = oam.o[object].tile;
+
+                // Find X coordinate in Sprite coords
+                SpriteX = currentX + 8 - oam.o[object].X;
+
+                // Check LCDC Register for Which Sprite Size we are using;
+                SpriteHeight = lcdRegs.LCDC.readBit(2) ? 16 : 8;
+
+                // Now Find the Y coord of the Sprite coords
+                u8 SpriteY = lcdRegs.LY.read()+ 16 - oam.o[object].Y;
+
+                // Check to see if we need to flip the Tile
+                if(oam.o[object].XFlip)
+                {
+                    SpriteX = 7 - SpriteX;
+                }
+
+                if (oam.o[object].YFlip)
+                {
+                    SpriteY = (SpriteHeight - 1) - SpriteY;
+                }
+
+                // Grab the Hi and Low Bytes
+                u8 lo = VRAM[(Tile *16) + SpriteY * 2];
+                u8 hi = VRAM[(Tile *16) + SpriteY * 2 + 1];
+
+                // Shift over the pixel we want 
+                u8 lo_bit = (lo >> (7-SpriteX)) & 1;
+                u8 hi_bit = (hi >> (7-SpriteX)) & 1;
+
+                // Combine the pixel bits to output color byte
+                u8 color_byte = (hi_bit << 1) | lo_bit;
+
+
+                if(color_byte != 0x00)
+                {
+                    if (oam.o[object].Priority)
+                    {
+                        if(ScreenBuffer[currentX + lcdRegs.LY.read()*160] == 0x00)
+                        {
+                            ScreenBuffer[currentX + lcdRegs.LY.read()*160] = color_byte;
+                        }
+                    }
+                    else
+                    {
+                        ScreenBuffer[currentX + lcdRegs.LY.read()*160] = color_byte;
+                    }
+
+                }
+
+            }
+        }
+        return;
+    }
+
+    void PPU::PushPixelToLCD(u8 currentX)
+    {
+        fetchBGPixel(currentX);
+        fetchSpritePixel(currentX);
+    }
+
     u8 PPU::lcd_read(u16 adress)
     {
         switch (adress)
@@ -345,6 +415,10 @@ namespace GBEmu
                 break;
             case 0xFF46:
 
+                if(Emu->dma.in_progress)
+                {
+                    return;
+                }
                 // DMA
                     // The value written to this register will kickoff direct memory access
                     // the value given will read from 0x(value)00 - 0x(value)9F
