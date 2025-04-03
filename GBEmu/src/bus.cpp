@@ -21,6 +21,11 @@ namespace GBEmu
         }
         else if (addr < 0xA000 )
         {
+            //CPU Cannot acccess VRAM When we are pushing pixels to the screen
+            if(Emu->ppu.Mode == 3)
+            {
+                return 0xFF;
+            }
             return Emu->ppu.VRAM[addr - 0x8000];
         }
         else if (addr < 0xC000)

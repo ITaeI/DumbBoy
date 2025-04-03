@@ -1,5 +1,6 @@
 #include "ppu.h"
 #include "Emulator.h"
+#include <algorithm>
 
 
 namespace GBEmu
@@ -14,8 +15,6 @@ namespace GBEmu
         // Reset For new use
         memset(VRAM, 0, 0x2000 * sizeof(u8));
         memset(ScreenBuffer, 0, 0x5A00 * sizeof(u8)); // used only for debugging atm
-        memset(oam.raw, 0, 160 * sizeof(u8));
-        memset(ScanlineObjects, 0, 10 * sizeof(u8));
         Mode = 2;
         dots = 0;
 
@@ -116,11 +115,11 @@ namespace GBEmu
             case 3: // During Mode 3, by default the PPU outputs one pixel to the screen per dot, 
                     //from left to right; the screen is 160 pixels wide, 
                     //so the minimum Mode 3 length is 160 + 12 = 172 dots.
-                if (dots >= 12)
+                if (dots >= 12 && dots < 172)
                 {
                     PushPixelToLCD(dots - 12);
                 }
-                if(dots >= 172)
+                else if(dots >= 172)
                 {
                     dots -= 172;
                     Mode = 0;
@@ -149,19 +148,19 @@ namespace GBEmu
 
     void PPU::ScanOAM()
     {
-        u8 ObjCount = 0;
         u8 ObjHeight = lcdRegs.LCDC.readBit(2) ? 16 : 8;
+        ScanlineObjects.clear();
         // OAM has 40 entries 
         for(int i = 0; i < 40; i++)
         {
             // Check to see if an obj or sprite is on the current scanline
-            if (oam.o[i].X != 0 && lcdRegs.LY.read() + 16 >= oam.o->Y && lcdRegs.LY.read() + 16 >= oam.o->Y + ObjHeight)
+            if (oam.o[i].X != 0 && lcdRegs.LY.read() + 16 >= oam.o[i].Y && lcdRegs.LY.read() + 16 <= oam.o[i].Y + ObjHeight - 1)
             {
-                ScanlineObjects[ObjCount] = i;
+                ScanlineObjects.emplace_back(i);
             }
 
             // We log the first 10 then return
-            if(ObjCount == 10)
+            if(ScanlineObjects.size() == 10)
             {
                 return;
             }
@@ -253,12 +252,75 @@ namespace GBEmu
 
         // We now move the final color byte to the BG FIFO
 
-        ScreenBuffer[currentX + lcdRegs.LY.read() * 160 -1 ] = color_byte;
+        ScreenBuffer[currentX + lcdRegs.LY.read() * 160] = color_byte;
     }
 
     void PPU::fetchSpritePixel(u8 currentX)
     {
-        
+        u8 Tile = 0;
+        u8 SpriteX = 0;
+        u8 SpriteY = 0;
+        u8 SpriteHeight = 0;
+
+        // Loop through our OAM Scan
+        for (auto object : ScanlineObjects)
+        {
+            if (currentX + 8 >= oam.o[object].X && currentX + 8 <= oam.o[object].X + 7)
+            {
+                // Grab the Tile Location from OAM
+                Tile = oam.o[object].tile;
+
+                // Find X coordinate in Sprite coords
+                SpriteX = currentX + 8 - oam.o[object].X;
+
+                // Check LCDC Register for Which Sprite Size we are using;
+                SpriteHeight = lcdRegs.LCDC.readBit(2) ? 16 : 8;
+
+                // Now Find the Y coord of the Sprite coords
+                u8 SpriteY = lcdRegs.LY.read()+ 16 - oam.o[object].Y;
+
+                // Check to see if we need to flip the Tile
+                if(oam.o[object].XFlip)
+                {
+                    SpriteX = 7 - SpriteX;
+                }
+
+                if (oam.o[object].YFlip)
+                {
+                    SpriteY = (SpriteHeight - 1) - SpriteY;
+                }
+
+                // Grab the Hi and Low Bytes
+                u8 lo = VRAM[(Tile *16) + SpriteY * 2];
+                u8 hi = VRAM[(Tile *16) + SpriteY * 2 + 1];
+
+                // Shift over the pixel we want 
+                u8 lo_bit = (lo >> (7-SpriteX)) & 1;
+                u8 hi_bit = (hi >> (7-SpriteX)) & 1;
+
+                // Combine the pixel bits to output color byte
+                u8 color_byte = (hi_bit << 1) | lo_bit;
+
+
+                if(color_byte != 0x00)
+                {
+                    if (oam.o[object].Priority)
+                    {
+                        if(ScreenBuffer[currentX + lcdRegs.LY.read()*160] == 0x00)
+                        {
+                            ScreenBuffer[currentX + lcdRegs.LY.read()*160] = color_byte;
+                        }
+                    }
+                    else
+                    {
+                        ScreenBuffer[currentX + lcdRegs.LY.read()*160] = color_byte;
+                    }
+
+                }
+
+            }
+        }
+        return;
     }
 
     void PPU::PushPixelToLCD(u8 currentX)
@@ -353,6 +415,10 @@ namespace GBEmu
                 break;
             case 0xFF46:
 
+                if(Emu->dma.in_progress)
+                {
+                    return;
+                }
                 // DMA
                     // The value written to this register will kickoff direct memory access
                     // the value given will read from 0x(value)00 - 0x(value)9F

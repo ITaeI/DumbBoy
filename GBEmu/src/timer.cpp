@@ -14,7 +14,7 @@ namespace GBEmu
         timerRegs.TIMA.write(0x00);
         timerRegs.TMA.write(0x00);
         timerRegs.TAC.write(0xF8);
-    }
+    } 
 
     void EmuTimer::timer_tick()
     {

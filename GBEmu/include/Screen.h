@@ -147,6 +147,11 @@ namespace GBEmu
         bool MapSelect = 0;
         bool DataSelect = 0;
 
+        //Render Sprite Data
+        bool ViewSpriteData = false;
+        void renderSprites();
+
+
         // GB colors
         Uint32 colors[4] = {0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000};
 

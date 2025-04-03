@@ -28,12 +28,13 @@ namespace GBEmu
                 u8 X; //Object's horizontal position + 8 (hidden x<0 || x>168)
                 u8 tile; // Tile location 
     
-                u8 Priority : 1; // This gets passed to FIFO entry
-                u8 YFlip : 1;
-                u8 XFlip : 1;
-                u8 Palette : 1;
-                u8 Bank_No : 1;
                 u8 CGB_Palette : 3;
+                u8 Bank_No : 1;
+                u8 Palette : 1;
+                u8 XFlip : 1;
+                u8 YFlip : 1;
+                u8 Priority : 1; // This gets passed to FIFO entry
+
     
     
             }o[40];
@@ -130,7 +131,7 @@ namespace GBEmu
 
         // OAM Search - Essentially checks the current scanline for up to 10 Sprites
         void ScanOAM();
-        u8 ScanlineObjects[10];
+        std::vector<int> ScanlineObjects;
 
 
         // FIFO pixel Fetcher Functions/variables

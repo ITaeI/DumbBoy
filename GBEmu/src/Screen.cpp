@@ -78,7 +78,9 @@ namespace GBEmu
             renderBG();
         if (ViewSettings)
             renderSettings();
-
+        if (ViewSpriteData)
+            renderSprites();
+ 
 
         ImGui::Render();
         SDL_SetRenderDrawColor(renderer, 0 , 0 , 0 , 0);
@@ -117,7 +119,7 @@ namespace GBEmu
                         
                         GBWindowReady = false;
                         // ToDo: change how to get roms into program
-                        Emu->cartridge.load("Super Mario Land (JUE) (V1.1) [!].gb");
+                        Emu->cartridge.load(const_cast<char*>("Super Mario Land (JUE) (V1.1) [!].gb"));
                         // run CPU on a separate thread
                         Emu->cpu_thread = std::thread (&Emulator::runCPU, Emu);
 
@@ -134,7 +136,7 @@ namespace GBEmu
                         
                         GBWindowReady = false;
                         // ToDo: change how to get roms into program
-                        Emu->cartridge.load("02-interrupts.gb");
+                        Emu->cartridge.load(const_cast<char*>("Tetris (JUE) (V1.1) [!].gb"));
                         // run CPU on a separate thread
                         Emu->cpu_thread = std::thread (&Emulator::runCPU, Emu);
 
@@ -169,6 +171,10 @@ namespace GBEmu
                     {
                         ViewBackground = !ViewBackground;
                     }
+                    else if(ImGui::MenuItem("Sprites"))
+                    {
+                        ViewSpriteData = !ViewSpriteData;
+                    }
                     ImGui::EndMenu();
                 }
                 ImGui::EndMenuBar();
@@ -202,7 +208,7 @@ namespace GBEmu
         {
             for(int x = 0; x< 160; x++)
             {
-                DrawPixel(x,y,Emu->ppu.ScreenBuffer[y*160 + x - 1]);
+                DrawPixel(x,y,Emu->ppu.ScreenBuffer[y*160 + x]);
             }
         }
 
@@ -642,6 +648,46 @@ namespace GBEmu
             ImGui::InputInt("Target FPS", &TargetFPS, 5, 100, ImGuiInputTextFlags_None);
         }
         ImGui::End();
+    }
+
+    void Screen::renderSprites()
+    {
+        ImGui::SetNextWindowDockID(dockID, ImGuiCond_FirstUseEver);
+
+        if(ImGui::Begin("Sprites", nullptr, ImGuiWindowFlags_NoCollapse))
+        {
+            if(ImGui::BeginTable("Sprite Objects", 5, ImGuiTableFlags_None))
+            {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text("X");
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Text("Y");
+                ImGui::TableSetColumnIndex(2);
+                ImGui::Text("Tile");
+                ImGui::TableSetColumnIndex(3);
+                ImGui::Text("XFlip");
+                ImGui::TableSetColumnIndex(4);
+                ImGui::Text("XFlip");
+                for(int i = 0; i < 40; i++)
+                {
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("%d", (int)Emu->ppu.oam.o[i].X);
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("%d", (int)Emu->ppu.oam.o[i].Y);
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("%d", (int)Emu->ppu.oam.o[i].tile);
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("%d", (int)Emu->ppu.oam.o[i].XFlip);
+                    ImGui::TableSetColumnIndex(4);
+                    ImGui::Text("%d", (int)Emu->ppu.oam.o[i].YFlip);
+                }
+            }
+            ImGui::EndTable();
+        }
+        ImGui::End();
+
     }
 
     void Screen::pollForEvents()

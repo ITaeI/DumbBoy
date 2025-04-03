@@ -11,6 +11,7 @@ namespace GBEmu
 
     bool cpu::step()
     {
+        
         if(!isHalted)
         {
             

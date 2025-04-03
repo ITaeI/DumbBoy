@@ -23,6 +23,7 @@ namespace GBEmu
 
 
         // Write Object to PPU OAM - in CGB Mode VRAM Can also be written to
+        u16 DmaAdress = (startAdress << 8 | current_index);
         Emu->ppu.oam.raw[current_index] = Emu->systemBus.read( (startAdress << 8) | current_index);
         current_index++;
 
@@ -38,6 +39,6 @@ namespace GBEmu
     {
         in_progress = 1;
         startAdress = StartAddress;
-        current_index = StartAddress;
+        current_index = 0x00;
     }
 }
