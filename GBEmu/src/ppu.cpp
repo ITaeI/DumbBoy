@@ -14,7 +14,7 @@ namespace GBEmu
     {
         // Reset For new use
         memset(VRAM, 0, 0x2000 * sizeof(u8));
-        memset(ScreenBuffer, 0, 0x5A00 * sizeof(u8)); // used only for debugging atm
+        memset(ScreenBuffer, 0, sizeof(ScreenBuffer)); // used only for debugging atm
         Mode = 2;
         dots = 0;
 
@@ -248,10 +248,12 @@ namespace GBEmu
         u8 lo_bit = (lo >> (7-(xPos)%8)) & 1;
         u8 hi_bit = (hi >> (7-(xPos)%8)) & 1;
 
-        u8 color_byte = (hi_bit << 1) | lo_bit;
+        u8 colorID = (hi_bit << 1) | lo_bit;
 
-        // We now move the final color byte to the BG FIFO
+        //now with the color id we will apply the palette
+        u8 color_byte = fetchPaletteColor(colorID, lcdRegs.BGP.read());
 
+        // We now move the final color byte to the screen buffer
         ScreenBuffer[currentX + lcdRegs.LY.read() * 160] = color_byte;
     }
 
@@ -299,11 +301,15 @@ namespace GBEmu
                 u8 hi_bit = (hi >> (7-SpriteX)) & 1;
 
                 // Combine the pixel bits to output color byte
-                u8 color_byte = (hi_bit << 1) | lo_bit;
+                u8 colorID = (hi_bit << 1) | lo_bit;
 
+                // Now We Check which palette this Object is using
+                u8 OBJpalette = oam.o[object].Palette ? lcdRegs.OBP1.read() : lcdRegs.OBP0.read();
 
-                if(color_byte != 0x00)
+                if(colorID != 0x00)
                 {
+                    // Apply The palette according to the color id
+                    u8 color_byte = fetchPaletteColor(colorID, OBJpalette);
                     if (oam.o[object].Priority)
                     {
                         if(ScreenBuffer[currentX + lcdRegs.LY.read()*160] == 0x00)
@@ -327,6 +333,12 @@ namespace GBEmu
     {
         fetchBGPixel(currentX);
         fetchSpritePixel(currentX);
+    }
+
+    u8 PPU::fetchPaletteColor(u8 colorID, u8 palette)
+    {
+        colorID = (palette >> (colorID) * 2) & 0x3;
+        return colorID;
     }
 
     u8 PPU::lcd_read(u16 adress)
@@ -390,27 +402,21 @@ namespace GBEmu
         switch (adress)
         {
             case 0xFF40:
-                std::cout << "LCD Control" << std::endl;
                 lcdRegs.LCDC.write(data);
                 break;
             case 0xFF41:
-                std::cout << "LCD Status" << std::endl;
                 lcdRegs.STAT.write((data & 0xFC) | (lcdRegs.STAT.read() & 0x03)); // Bits 0-2 are read only
                 break;
             case 0xFF42:
-                std::cout << "Scroll Y" << std::endl;
                 lcdRegs.SCY.write(data);
                 break;
             case 0xFF43:
-                std::cout << "Scroll X" << std::endl;
                 lcdRegs.SCX.write(data);
                 break;
             case 0xFF44:
-                std::cout << "LY" << std::endl;
                 lcdRegs.LY.write(data);
                 break;
             case 0xFF45:
-                std::cout << "LY Compare" << std::endl;
                 lcdRegs.LYC.write(data);
                 break;
             case 0xFF46:
@@ -434,23 +440,18 @@ namespace GBEmu
                 Emu->dma.StartTransfer(data); // Starts DMA transfer
                 break;
             case 0xFF47:
-                std::cout << "BG Palette Data" << std::endl;
                 lcdRegs.BGP.write(data);
                 break;
             case 0xFF48:
-                std::cout << "OBJ Palette 0 Data" << std::endl;
                 lcdRegs.OBP0.write(data);
                 break;
             case 0xFF49:
-                std::cout << "OBJ Palette 1 Data" << std::endl;
                 lcdRegs.OBP1.write(data);
                 break;
             case 0xFF4A:
-                std::cout << "Window Y Position" << std::endl;
                 lcdRegs.WY.write(data);
                 break;
             case 0xFF4B:
-                std::cout << "Window X Position" << std::endl;
                 lcdRegs.WX.write(data);
                 break;
             default:

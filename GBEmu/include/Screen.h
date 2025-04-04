@@ -120,7 +120,7 @@ namespace GBEmu
 
         // Game Screen - Output of GB Tiles and Sprites
         void renderGBScreen();
-        void DrawPixel(u8 x, u8 y, u8 color);
+        void DrawPixel(u8 x, u8 y, u8 color_byte);
         bool GBWindowReady = false;
 
         // Settings Screen
@@ -153,8 +153,11 @@ namespace GBEmu
 
 
         // GB colors
-        Uint32 colors[4] = {0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000};
 
+        // Grays
+        //const Uint32 colors[4] = {0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000};
+        // Original Green
+        const Uint32 colors[4] = { 0xFF9BBC0F, 0xFF8BAC0F, 0xFF306230, 0xFF0F380F };
         // Aspect Ratio Calculation
         ImVec2 CalculateImageSize(float W, float H);
         ImVec2 CalculateScreenLocation();

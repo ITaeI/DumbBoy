@@ -31,14 +31,14 @@ namespace GBEmu
         SDL_SetRenderVSync(renderer, 1);
 
         // Create Separate Textures and surfaces for LCD BG and Tile Windows
-        tileTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_TARGET, imageWidths[Tiles], imageHeights[Tiles]);
-        tileSurface = SDL_CreateSurface(imageWidths[Tiles], imageHeights[Tiles], SDL_PIXELFORMAT_ABGR8888);
+        tileTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, imageWidths[Tiles], imageHeights[Tiles]);
+        tileSurface = SDL_CreateSurface(imageWidths[Tiles], imageHeights[Tiles], SDL_PIXELFORMAT_ARGB8888);
 
-        LCDTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_TARGET, imageWidths[GBScreen], imageHeights[GBScreen]);
-        LCDSurface = SDL_CreateSurface(imageWidths[GBScreen], imageHeights[GBScreen], SDL_PIXELFORMAT_ABGR8888);
+        LCDTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, imageWidths[GBScreen], imageHeights[GBScreen]);
+        LCDSurface = SDL_CreateSurface(imageWidths[GBScreen], imageHeights[GBScreen], SDL_PIXELFORMAT_ARGB8888);
 
-        BGTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_TARGET, imageWidths[Background], imageHeights[Background]);
-        BGSurface = SDL_CreateSurface(imageWidths[Background], imageHeights[Background], SDL_PIXELFORMAT_ABGR8888);
+        BGTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, imageWidths[Background], imageHeights[Background]);
+        BGSurface = SDL_CreateSurface(imageWidths[Background], imageHeights[Background], SDL_PIXELFORMAT_ARGB8888);
 
         // init imgui
         IMGUI_CHECKVERSION();
@@ -136,7 +136,7 @@ namespace GBEmu
                         
                         GBWindowReady = false;
                         // ToDo: change how to get roms into program
-                        Emu->cartridge.load(const_cast<char*>("Tetris (JUE) (V1.1) [!].gb"));
+                        Emu->cartridge.load(const_cast<char*>("Legend of Zelda, The - Link's Awakening (U) (V1.2) [!].gb"));
                         // run CPU on a separate thread
                         Emu->cpu_thread = std::thread (&Emulator::runCPU, Emu);
 
@@ -190,7 +190,7 @@ namespace GBEmu
 
     }
 
-    void Screen::DrawPixel(u8 x, u8 y, u8 color)
+    void Screen::DrawPixel(u8 x, u8 y, u8 color_byte)
     {
         SDL_Rect rect;
         rect.x = x * 4;
@@ -198,7 +198,7 @@ namespace GBEmu
         rect.h = 4;
         rect.w = 4;
 
-        SDL_FillSurfaceRect(LCDSurface, &rect, colors[color]);
+        SDL_FillSurfaceRect(LCDSurface, &rect, colors[color_byte]);
 
     }
 
@@ -574,7 +574,9 @@ namespace GBEmu
 
                             u8 lo_bit = (lo >> (7-j)) & 1;
                             u8 hi_bit = (hi >> (7-j)) & 1;
-                            u8 color_byte = (hi_bit << 1) | lo_bit;
+                            u8 colorID = (hi_bit << 1) | lo_bit;
+
+                            u8 color_byte = Emu->ppu.fetchPaletteColor(colorID, Emu->ppu.lcdRegs.BGP.read());
 
                             rect.x = (x*8 + j)*4;
                             rect.y = (y*8 + i)*4;
@@ -656,7 +658,7 @@ namespace GBEmu
 
         if(ImGui::Begin("Sprites", nullptr, ImGuiWindowFlags_NoCollapse))
         {
-            if(ImGui::BeginTable("Sprite Objects", 5, ImGuiTableFlags_None))
+            if(ImGui::BeginTable("Sprite Objects", 6, ImGuiTableFlags_None))
             {
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
@@ -668,7 +670,9 @@ namespace GBEmu
                 ImGui::TableSetColumnIndex(3);
                 ImGui::Text("XFlip");
                 ImGui::TableSetColumnIndex(4);
-                ImGui::Text("XFlip");
+                ImGui::Text("YFlip");
+                ImGui::TableSetColumnIndex(5);
+                ImGui::Text("Pallet");
                 for(int i = 0; i < 40; i++)
                 {
                     ImGui::TableNextRow();
@@ -682,6 +686,8 @@ namespace GBEmu
                     ImGui::Text("%d", (int)Emu->ppu.oam.o[i].XFlip);
                     ImGui::TableSetColumnIndex(4);
                     ImGui::Text("%d", (int)Emu->ppu.oam.o[i].YFlip);
+                    ImGui::TableSetColumnIndex(5);
+                    ImGui::Text("0x%02X", (int)Emu->ppu.oam.o[i].Palette);                    
                 }
             }
             ImGui::EndTable();

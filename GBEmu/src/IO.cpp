@@ -39,7 +39,7 @@ namespace GBEmu
         {
             return Emu->processor.IF.read();
         }
-        else if (adress <= 0xFF26 && adress >= 0xFF10 )
+        else if (adress >= 0xFF10 && adress <= 0xFF26 )
         {
             //std::cout << "Audio" << std::endl;
             return 0;
@@ -133,7 +133,7 @@ namespace GBEmu
             //std::cout << "Interrupt Flag written" << std::endl;
             Emu->processor.IF.write(data);
         }
-        else if (adress <= 0xFF26 && adress >= 0xFF10 )
+        else if (adress >= 0xFF26 && adress <= 0xFF10 )
         {
             //std::cout << "Audio" << std::endl;
             //NO_IMPL

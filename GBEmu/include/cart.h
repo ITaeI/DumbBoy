@@ -71,8 +71,11 @@ namespace GBEmu
         u8 ZeroBank;
         u8 HighBank;
 
-
+        // - MBC2 Related Flags
         bool MBC2 = false;
+
+        // - MBC3 Related Flags
+        bool MBC3 = false;
 
         //Load a ROM file
         bool load(char *filename);

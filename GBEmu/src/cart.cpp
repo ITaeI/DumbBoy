@@ -83,6 +83,10 @@ namespace GBEmu
                 return cart_romdata[addr];
             }
         }
+        else if (MBC3)
+        {
+
+        }
 
         return cart_romdata[addr];
     }
@@ -287,6 +291,7 @@ namespace GBEmu
 
     void cart::setupBanking()
     {
+        // Check to see which Memory bank controller the rom is using;
         if(header->cart_type >= 0x01 && header->cart_type <= 0x03)
         {
             MBC1 = true;
@@ -294,6 +299,10 @@ namespace GBEmu
         else if(header->cart_type >= 0x05 && header->cart_type <= 0x06)
         {
             MBC2 = true;
+        }
+        else if(header->cart_type >= 0x0F && header->cart_type <= 0x13)
+        {
+            MBC3 = true;
         }
 
         // Initalize which rom bank we are pointing to (always one at the beginning)
