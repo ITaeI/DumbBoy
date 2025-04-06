@@ -17,8 +17,8 @@ namespace GBEmu
         std::string getLicenseeName(int code);
 
         Emulator *Emu;
-
         public:
+        void connectCartridge(Emulator* emu);
 
         ~cart()
         {
@@ -61,9 +61,10 @@ namespace GBEmu
 
         // Initialize banks depending on the ROM type
         void setupBanking();
-        // Cart type bools
-        bool MBC1 = false;
+
+        
         // - MBC1 Related Flags
+        bool MBC1 = false;
         u8 modeFlag;
 
         void CalculateZeroBank();
@@ -76,6 +77,26 @@ namespace GBEmu
 
         // - MBC3 Related Flags
         bool MBC3 = false;
+        u8 currentRTCReg;
+        bool isClockRegisterMapped = false;
+        bool latchOccured = false;
+
+
+        struct RTCRegs
+        {
+            u8 s; // Seconds Register
+            u8 m; // Minutes Register
+            u8 h; // hours register
+            u8 DL; // Lower 8 bits of the Days Register
+            u8 DH; // 0: Bit 8 of the DL Reg, 6: Timer Halt Bit, 7 Day Counter carry bit
+        };
+
+        RTCRegs RTC;
+        RTCRegs RTCLatched;
+
+        // For MBC3 there is an internal Real Time Clock that increments every 
+        // 4194304 T-Cycles
+        void ClockTick();
 
         //Load a ROM file
         bool load(char *filename);
@@ -83,10 +104,8 @@ namespace GBEmu
         void freeRomData();
         //Read a byte from the ROM
         u8 read(u16 addr);
-        //Write a byte to the ROM
+        //Write a byte to the ROM/RAM
         void write(u16 addr, u8 data);
-
-        void connectCartridge(Emulator* emu);
 
     };
 }

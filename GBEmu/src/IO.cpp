@@ -13,7 +13,7 @@ namespace GBEmu
     {
         if (adress == 0xFF00)
         {
-            std::cout << "Joypad Input" << std::endl;
+            //std::cout << "Joypad Input" << std::endl;
             return 0xCF;
             //NO_IMPL
         }

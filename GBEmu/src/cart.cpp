@@ -1,10 +1,9 @@
 #include "common.h"
 #include <map>
-#include <iostream>
 #include <fstream>
-#include <string>
 #include "cart.h"
 #include "Emulator.h"
+#include <ctime>
 
 namespace GBEmu
 {
@@ -85,7 +84,56 @@ namespace GBEmu
         }
         else if (MBC3)
         {
+            if(addr <= 0x3FFF)
+            {
+                return cart_romdata[addr];
+            }
+            else if (addr <= 0x7FFF)
+            {
+                return cart_romdata[(addr - 0x4000) + (current_rom_bank*0x4000)];
+            }
+            else if (addr >= 0xA000 && addr <= 0xBFFF)
+            {
 
+                if(isClockRegisterMapped)
+                {
+                    if (!latchOccured)
+                    {
+                        return 0xFF;
+                    }
+
+                    switch (currentRTCReg)
+                    {
+                    case 0x08:
+                        return RTCLatched.s;
+                        break;
+                    case 0x09:
+                        return RTCLatched.m;
+                        break;
+                    case 0x0A:
+                        return RTCLatched.h;
+                        break;
+                    case 0x0B:
+                        return RTCLatched.DL;
+                        break;
+                    case 0x0C:
+                        return RTCLatched.DH;
+                        break;
+
+                    
+                    default:
+                        break;
+                    }
+                }
+                else
+                {
+                    if(!ram_enabled)
+                    {
+                        return 0xFF;
+                    }
+                    return ram_Banks[addr - 0xA000 + (current_ram_bank * 0x2000)];
+                }
+            }
         }
 
         return cart_romdata[addr];
@@ -179,7 +227,7 @@ namespace GBEmu
                 // Check 8th bit and if lower nible == 0xA
                 if(!(addr >> 8 & 1))
                 {
-                    if (addr & 0x0F == 0xA)
+                    if (data & 0x0F == 0xA)
                     {
                          ram_enabled = true; 
                     }
@@ -210,6 +258,96 @@ namespace GBEmu
                 }
 
                 ram_Banks[(addr - 0xA000) & 0x1FF] = data;
+            }
+        }
+        else if(MBC3)
+        {
+            if(addr <= 0x1FFF)
+            {
+                if((data & 0xF) == 0xA)
+                {
+                    ram_enabled = true;
+                }
+                else
+                {
+                    ram_enabled = false;
+                }
+            }
+            else if(addr <= 0x3FFF)
+            {
+                if(data == 0)
+                {
+                    current_rom_bank = 1;
+                }
+                else
+                {
+                    current_rom_bank = data & 0x7F;
+                }
+            }
+            else if (addr <= 0x5FFF)
+            {
+                if(data <= 0x03)
+                {
+                    isClockRegisterMapped = false;
+                    current_ram_bank = data;
+
+                }
+                else if(data >= 0x08 && data <= 0x0C)
+                {
+                    isClockRegisterMapped = true;
+                    currentRTCReg = data;
+                }
+            }
+            else if (addr <= 0x7FFF)
+            {
+
+                static u8 prevInput = data;
+
+                // if the input of 0x00 is followed by a 0x01
+                if(prevInput == 0x00 and data == 0x01)
+                {
+                    RTCLatched = RTC;
+                    latchOccured = true;
+                }
+                prevInput = data;
+
+            }
+            else if (addr >= 0xA000 && addr <= 0xBFFF)
+            {
+                if(isClockRegisterMapped)
+                {
+                    switch (currentRTCReg)
+                    {
+                    case 0x08:
+                        RTC.s = data & 0b00111111;
+                        Emu->ticks = 0; // resets sub second counter
+                        break;
+                    case 0x09:
+                        RTC.m = data & 0b00111111;
+                        break;
+                    case 0x0A:
+                        RTC.h = data & 0b00011111;
+                        break;
+                    case 0x0B:
+                        RTC.DL = data;
+                        break;
+                    case 0x0C:
+                        RTC.DH = data & 0b11000001;
+                        break;
+
+                    
+                    default:
+                        break;
+                    }
+                }
+                else
+                {
+                    if(!ram_enabled)
+                    {
+                        return;
+                    }
+                    ram_Banks[(addr - 0xA000) + (current_ram_bank * 0x2000)] = data;
+                }
             }
         }
 
@@ -291,6 +429,11 @@ namespace GBEmu
 
     void cart::setupBanking()
     {
+        // Set Memory Bank controller/timer Bools to a known state;
+        MBC1 = false;
+        MBC2 = false;
+        MBC3 = false;
+
         // Check to see which Memory bank controller the rom is using;
         if(header->cart_type >= 0x01 && header->cart_type <= 0x03)
         {
@@ -315,6 +458,14 @@ namespace GBEmu
 
         // For MBC1
         modeFlag = 0;
+
+        // For MBC3
+        memset(&RTC,0,sizeof(RTC));
+        memset(&RTCLatched,0,sizeof(RTC));
+        isClockRegisterMapped = false;
+        latchOccured = false;
+
+        // Note in the future Will need to initalize RAM banks and Clock Registers from save files
     }
 
     void cart::CalculateZeroBank()
@@ -352,6 +503,35 @@ namespace GBEmu
             // replace 5th and 6th bit with lowest two bits of ram bank number
             HighBank = (current_rom_bank & 0b11001111) | (current_ram_bank & 0x3) << 5;
         }
+    }
+
+    void cart::ClockTick()
+    {
+        RTC.s++;
+        if(RTC.s = 60)
+        {
+            RTC.s = 0;
+            RTC.m++;
+            if(RTC.m = 60)
+            {
+                RTC.m = 0;
+                RTC.h++;
+                if(RTC.h == 24)
+                {
+                    RTC.DL++;
+                    RTC.h = 0;
+            
+                    if(RTC.DL == 0x00)
+                    {
+                        RTC.DH ^= (1<<7);
+                    }
+                }
+            }
+        }
+
+
+
+
     }
 
     bool cart::load(char *filename)

@@ -132,6 +132,12 @@ namespace GBEmu
                 timer.timer_tick();
                 ppu.tick();
             }
+
+            if(ticks >= 4194304)
+            {
+                cartridge.ClockTick();
+                ticks = 0;
+            }
             dma.tick();
         }
     }

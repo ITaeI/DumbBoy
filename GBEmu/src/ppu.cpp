@@ -86,17 +86,21 @@ namespace GBEmu
                 {
                     dots -= 456;
                     lcdRegs.LY.Increment();
-                    compare_LY_LYC();
 
                     if(lcdRegs.LY.read() == 154)
                     {
                         Mode = 2;
                         lcdRegs.LY.write(0);
+                        compare_LY_LYC();
                         lcdRegs.STAT.write((lcdRegs.STAT.read() & 0xFC) | Mode);
                         if(lcdRegs.STAT.readBit(5)) // OAM interrupt
                         {
                             Emu->processor.IF.setBit(LCD,true);
                         }
+                    }
+                    else
+                    {
+                        compare_LY_LYC();
                     }
                 }
                 break;

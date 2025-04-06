@@ -119,7 +119,7 @@ namespace GBEmu
                         
                         GBWindowReady = false;
                         // ToDo: change how to get roms into program
-                        Emu->cartridge.load(const_cast<char*>("Super Mario Land (JUE) (V1.1) [!].gb"));
+                        Emu->cartridge.load(const_cast<char*>("Pokemon Red (UE) [S][!].gb"));
                         // run CPU on a separate thread
                         Emu->cpu_thread = std::thread (&Emulator::runCPU, Emu);
 
@@ -470,7 +470,7 @@ namespace GBEmu
         auto currentTime = std::chrono::steady_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastTileUpdate).count();
 
-        if (elapsed >= 128)
+        if (elapsed >= 160)
         {
             for(int y = 0; y < 24; y++)
             {
@@ -544,7 +544,7 @@ namespace GBEmu
         }
 
         // 0 = 9800–9BFF; 1 = 9C00–9FFF MAP
-        if(elapsed >= 128)
+        if(elapsed >= 160)
         {
             // 32 By 32 Tile Map Made Up of Window and Background Tiles
             for(int y = 0; y<32; y++)
