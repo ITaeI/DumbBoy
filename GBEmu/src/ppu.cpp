@@ -61,10 +61,10 @@ namespace GBEmu
                     {
                         Mode = 1;
                         lcdRegs.STAT.write((lcdRegs.STAT.read() & 0xFC) | Mode);
-                        Emu->processor.IF.setBit(VBlank,true); // Set Vblank Interrupt flag
+                        Emu->processor.IF.setBit(VBlank_Int,true); // Set Vblank Interrupt flag
                         if(lcdRegs.STAT.readBit(4)) // if Mode 1 is a set as LCD interrupt condition
                         {
-                            Emu->processor.IF.setBit(LCD,true);
+                            Emu->processor.IF.setBit(LCD_Int,true);
                         }
                         
                     }
@@ -73,7 +73,7 @@ namespace GBEmu
                         lcdRegs.STAT.write((lcdRegs.STAT.read() & 0xFC) | Mode);
                         if(lcdRegs.STAT.readBit(5))
                         {
-                            Emu->processor.IF.setBit(LCD,true);
+                            Emu->processor.IF.setBit(LCD_Int,true);
                         }
                     }
                 }
@@ -95,7 +95,7 @@ namespace GBEmu
                         lcdRegs.STAT.write((lcdRegs.STAT.read() & 0xFC) | Mode);
                         if(lcdRegs.STAT.readBit(5)) // OAM interrupt
                         {
-                            Emu->processor.IF.setBit(LCD,true);
+                            Emu->processor.IF.setBit(LCD_Int,true);
                         }
                     }
                     else
@@ -130,7 +130,7 @@ namespace GBEmu
                     lcdRegs.STAT.write((lcdRegs.STAT.read() & 0xFC) | Mode);
                     if(lcdRegs.STAT.readBit(3))
                     {
-                        Emu->processor.IF.setBit(LCD,true);
+                        Emu->processor.IF.setBit(LCD_Int,true);
                     }
                 }
                 break;
@@ -146,7 +146,7 @@ namespace GBEmu
         lcdRegs.STAT.setBit(2,LY_LYC_compare);
         if (LY_LYC_compare)
         {
-            Emu->processor.IF.setBit(LCD,true);
+            Emu->processor.IF.setBit(LCD_Int,true);
         } 
     } 
 
@@ -183,7 +183,7 @@ namespace GBEmu
         if (lcdRegs.LCDC.readBit(5)) // First Check if window is enabled
         {
             // Now check if we are within the window bounds
-            if ((lcdRegs.LY.read()  >=  lcdRegs.WY.read() && lcdRegs.LY.read()  <=  lcdRegs.WY.read() + 31) && (currentX >= lcdRegs.WX.read()-7 && currentX <= lcdRegs.WX.read() + 24))
+            if (lcdRegs.LY.read()  >= lcdRegs.WY.read() && currentX >= lcdRegs.WX.read() - 7)
             {
                 CurrentTileIsWindow = true;
 
@@ -223,12 +223,12 @@ namespace GBEmu
         if (CurrentTileIsWindow)
         {
             xPos -= windowX;
-            yPos = (lcdRegs.LY.read() - windowY);
+            yPos = (lcdRegs.LY.read() - windowY) & 255;
         }
         else
         {
             xPos += scrollX;
-            yPos = (scrollY + lcdRegs.LY.read() );
+            yPos = (scrollY + lcdRegs.LY.read());
         }
 
         // Now depending on Adressing mode we use signed or unsigned tile number

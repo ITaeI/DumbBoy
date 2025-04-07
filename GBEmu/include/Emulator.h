@@ -9,6 +9,7 @@
 #include "timer.h"
 #include "ppu.h"
 #include "dma.h"
+#include "joypad.h"
 #include <thread>
 
 namespace GBEmu
@@ -29,6 +30,7 @@ namespace GBEmu
         EmuTimer timer;
         PPU ppu;
         DMA dma;
+        Joypad joypad;
 
 
 

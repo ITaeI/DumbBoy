@@ -23,6 +23,7 @@ namespace GBEmu
         timer.connectTimer(this);
         ppu.connectPPU(this);
         dma.connectDMA(this);
+        joypad.connectJoypad(this);
 
     }
 
@@ -103,6 +104,9 @@ namespace GBEmu
 
         // Reset PPU
         ppu.init();
+
+        // reset Joypad
+        joypad.init();
     }
 
     int Emulator::run()
@@ -138,6 +142,10 @@ namespace GBEmu
                 cartridge.ClockTick();
                 ticks = 0;
             }
+            static auto LastCycle = std::chrono::steady_clock::now();
+            auto target = LastCycle + std::chrono::nanoseconds(1000);
+            std::this_thread::sleep_until(target);
+            LastCycle = target;
             dma.tick();
         }
     }

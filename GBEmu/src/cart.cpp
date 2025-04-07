@@ -145,7 +145,7 @@ namespace GBEmu
     {
         if (MBC1)
         {
-            if (addr >= 0x0000 && addr <= 0x1FFF) // set ram enabled
+            if (addr <= 0x1FFF) // set ram enabled
             {
                 if(data & 0xF == 0xA)
                 {
@@ -156,7 +156,7 @@ namespace GBEmu
                     ram_enabled = false;
                 }
             }
-            else if (addr >= 0x2000 && addr <= 0x3FFF) // set rom bank
+            else if (addr <= 0x3FFF) // set rom bank
             {
                 switch(header->rom_size)
                 {
@@ -187,12 +187,12 @@ namespace GBEmu
 
                 }
             }
-            else if(addr >= 0x4000 && addr <= 0x5FFF)
+            else if(addr <= 0x5FFF)
             {
                 // change the last two bits to the last two bits of written data
                 current_ram_bank = (current_ram_bank & 0xFC) | (data & 0x03);
             }
-            else if(addr >= 0x6000 && addr <= 0x7FFF)
+            else if(addr <= 0x7FFF)
             {
                 modeFlag |= (data &0x1); // set the mode flag to the lowest bit of written data
             }

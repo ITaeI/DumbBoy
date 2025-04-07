@@ -31,10 +31,11 @@ namespace GBEmu
                     std::cout << "Debug Message: " << DBG << std::endl;
                 }
 
-                if(reg.pc.read() -1  == 0x7DA)
-                {
-                    std::cout << "breakpoint" << std::endl;
-                }
+                // if(reg.pc.read() -1  == 0x20F)
+                // {
+                //     std::cout << "breakpoint" << std::endl;
+                //     Emu->debug = true;
+                // }
     
                 executeInstruction();
             }
@@ -64,40 +65,40 @@ namespace GBEmu
 
     void cpu::HandleInterrupts()
     {
-        if(IE.readBit(VBlank) && IF.readBit(VBlank))
+        if(IE.readBit(VBlank_Int) && IF.readBit(VBlank_Int))
         {
             PUSH_R16(reg.pc);
             reg.pc.write(0x40);
             IME = false;
-            IF.setBit(VBlank,0);
+            IF.setBit(VBlank_Int,0);
         }
-        else if (IE.readBit(LCD) && IF.readBit(LCD))
+        else if (IE.readBit(LCD_Int) && IF.readBit(LCD_Int))
         {
             PUSH_R16(reg.pc);
             reg.pc.write(0x48);
             IME = false;
-            IF.setBit(LCD,0);
+            IF.setBit(LCD_Int,0);
         }
-        else if (IE.readBit(Timer) && IF.readBit(Timer))
+        else if (IE.readBit(Timer_Int) && IF.readBit(Timer_Int))
         {
             PUSH_R16(reg.pc);
             reg.pc.write(0x50);
             IME = false;
-            IF.setBit(Timer,0);
+            IF.setBit(Timer_Int,0);
         }
-        else if (IE.readBit(Serial) && IF.readBit(Serial))
+        else if (IE.readBit(Serial_Int) && IF.readBit(Serial_Int))
         {
             PUSH_R16(reg.pc);
             reg.pc.write(0x58);
             IME = false;
-            IF.setBit(Serial,0);
+            IF.setBit(Serial_Int,0);
         }
-        else if (IE.readBit(Joypad) && IF.readBit(Joypad))
+        else if (IE.readBit(Joypad_Int) && IF.readBit(Joypad_Int))
         {
             PUSH_R16(reg.pc);
             reg.pc.write(0x60);
             IME = false;
-            IF.setBit(Joypad,0);
+            IF.setBit(Joypad_Int,0);
         }
     }
 

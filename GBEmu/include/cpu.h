@@ -228,11 +228,11 @@ namespace GBEmu
     };
 
     enum INT_Flags{
-        VBlank = 0,
-        LCD = 1,
-        Timer = 2,
-        Serial = 3,
-        Joypad = 4
+        VBlank_Int = 0,
+        LCD_Int = 1,
+        Timer_Int = 2,
+        Serial_Int = 3,
+        Joypad_Int = 4
     };
 
 }

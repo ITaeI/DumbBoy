@@ -13,9 +13,7 @@ namespace GBEmu
     {
         if (adress == 0xFF00)
         {
-            //std::cout << "Joypad Input" << std::endl;
-            return 0xCF;
-            //NO_IMPL
+            return Emu->joypad.read();
         }
         else if (adress <= 0xFF02)
         {
@@ -103,8 +101,7 @@ namespace GBEmu
     {
         if (adress == 0xFF00)
         {
-            //std::cout << "Joypad Input" << std::endl;
-            //NO_IMPL
+            Emu->joypad.write(data);
         }
         else if (adress <= 0xFF02)
         {

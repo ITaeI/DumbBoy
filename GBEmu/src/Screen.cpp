@@ -441,6 +441,24 @@ namespace GBEmu
                 ImGui::EndTable();
             }
 
+            if(ImGui::BeginTable("Joypad", 4, ImGuiTableFlags_None))
+            {
+                ImGui::TableSetupColumn("Joypad Register", ImGuiTableColumnFlags_NoResize);
+                ImGui::TableSetupColumn("##Value 1", ImGuiTableColumnFlags_NoResize);
+
+                ImGui::TableHeadersRow();
+
+
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text("Joypad");
+
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Text("[ 0x%02X ]", Emu->joypad.JoypadInputs);
+
+            }
+            ImGui::EndTable();
+
             ImGui::Separator();
             if(ImGui::Button("Step"))
             {
@@ -712,16 +730,28 @@ namespace GBEmu
                     switch(event.key.scancode)
                     {
                         case SDL_SCANCODE_W:
-                            std::cout << "W" << std::endl;
+                            Emu->joypad.PressKey(2);
                             break;
                         case SDL_SCANCODE_A:
-                            std::cout << "A" << std::endl;
+                            Emu->joypad.PressKey(1);
                             break;
                         case SDL_SCANCODE_S:
-                            std::cout << "S" << std::endl;
+                            Emu->joypad.PressKey(3);
                             break;
                         case SDL_SCANCODE_D:
-                            std::cout << "D" << std::endl;
+                            Emu->joypad.PressKey(0);
+                            break;
+                        case SDL_SCANCODE_O:
+                            Emu->joypad.PressKey(7);
+                            break;
+                        case SDL_SCANCODE_P:
+                            Emu->joypad.PressKey(6);
+                            break;
+                        case SDL_SCANCODE_K:
+                            Emu->joypad.PressKey(5);
+                            break;
+                        case SDL_SCANCODE_L:
+                            Emu->joypad.PressKey(4);
                             break;
                     }
                     break;
@@ -729,16 +759,28 @@ namespace GBEmu
                     switch(event.key.scancode)
                     {
                         case SDL_SCANCODE_W:
-                            std::cout << "W UP" << std::endl;
+                            Emu->joypad.ReleaseKey(2);
                             break;
                         case SDL_SCANCODE_A:
-                            std::cout << "A UP" << std::endl;
+                            Emu->joypad.ReleaseKey(1);
                             break;
                         case SDL_SCANCODE_S:
-                            std::cout << "S UP" << std::endl;
+                            Emu->joypad.ReleaseKey(3);
                             break;
                         case SDL_SCANCODE_D:
-                            std::cout << "D UP" << std::endl;
+                            Emu->joypad.ReleaseKey(0);
+                            break;
+                        case SDL_SCANCODE_O:
+                            Emu->joypad.ReleaseKey(7);
+                            break;
+                        case SDL_SCANCODE_P:
+                            Emu->joypad.ReleaseKey(6);
+                            break;
+                        case SDL_SCANCODE_K:
+                            Emu->joypad.ReleaseKey(5);
+                            break;
+                        case SDL_SCANCODE_L:
+                            Emu->joypad.ReleaseKey(4);
                             break;
                     }
                     break;

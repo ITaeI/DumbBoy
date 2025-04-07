@@ -50,7 +50,7 @@ namespace GBEmu
                 if(timerRegs.TIMA.read() == 0x00)
                 {
                     timerRegs.TIMA.write(timerRegs.TMA.read());
-                    Emu->processor.IF.setBit(Timer, true); // Request Timer Interrupt
+                    Emu->processor.IF.setBit(Timer_Int, true); // Request Timer Interrupt
                 }
             }
 
