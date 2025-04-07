@@ -28,7 +28,7 @@ namespace GBEmu
                 }
                 else
                 {
-                    return cart_romdata[addr + ZeroBank * 0x4000];
+                    return cart_romdata[addr + (ZeroBank * 0x4000)];
                 }
             }
             else if (addr >= 0x4000 && addr <= 0x7FFF)
@@ -147,7 +147,7 @@ namespace GBEmu
         {
             if (addr <= 0x1FFF) // set ram enabled
             {
-                if(data & 0xF == 0xA)
+                if((data & 0xF) == 0xA)
                 {
                     ram_enabled = true;
                 }
@@ -495,13 +495,13 @@ namespace GBEmu
         else if(header->rom_size == 0x5)
         {
             // replace 5th bit with lowest bit of ram bank
-            HighBank = (current_rom_bank & 0b11101111) | (current_ram_bank & 0x1) << 5;
+            HighBank = (current_rom_bank & 0b11011111) | ((current_ram_bank & 0x1) << 5);
 
         }
         else if(header->rom_size == 0x6)
         {
             // replace 5th and 6th bit with lowest two bits of ram bank number
-            HighBank = (current_rom_bank & 0b11001111) | (current_ram_bank & 0x3) << 5;
+            HighBank = (current_rom_bank & 0b10011111) | ((current_ram_bank & 0x3) << 5);
         }
     }
 
