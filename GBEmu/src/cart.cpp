@@ -158,6 +158,11 @@ namespace GBEmu
             }
             else if (addr <= 0x3FFF) // set rom bank
             {
+                if (data == 0x00)
+                {
+                    current_rom_bank = 1;
+                    return;
+                }
                 switch(header->rom_size)
                 {
                     case 0x00: // 32 KiB (no banking)
@@ -216,7 +221,7 @@ namespace GBEmu
                 }
                 else
                 {
-                    ram_Banks[(addr - 0xA000)] = data;
+                    ram_Banks[(addr - 0xA000) % 0x2000] = data;
                 }
             }
         }
@@ -435,15 +440,15 @@ namespace GBEmu
         MBC3 = false;
 
         // Check to see which Memory bank controller the rom is using;
-        if(header->cart_type >= 0x01 && header->cart_type <= 0x03)
+        if(getRomTypeName(header->cart_type).find("MBC1") != std::string::npos)
         {
             MBC1 = true;
         }
-        else if(header->cart_type >= 0x05 && header->cart_type <= 0x06)
+        else if(getRomTypeName(header->cart_type).find("MBC2") != std::string::npos)
         {
             MBC2 = true;
         }
-        else if(header->cart_type >= 0x0F && header->cart_type <= 0x13)
+        else if(getRomTypeName(header->cart_type).find("MBC3") != std::string::npos)
         {
             MBC3 = true;
         }
@@ -529,9 +534,60 @@ namespace GBEmu
             }
         }
 
+    }
 
+    void cart::save()
+    {
+        // Check so see if the cartridge supports Battery Buffered ram (ie Save Files)
+        // Thus check for it BATTERY in the ROM Type name
+        if (!cartridgeLoaded)
+        {
+            return;
+        }
 
+        if(getRomTypeName(header->cart_type).find("BATTERY") != std::string::npos)
+        {
+            // Grab the name of the ROM
+            std::string savePath = cart_filename;
+            // Replace the .gb extension with .sav
+            size_t extensionPos = savePath.find_last_of('.'); //Grabs last occurence of Extension ID
+            
+            savePath = "../../GBEmu/Saves/" + savePath.substr(0,extensionPos) + ".sav";
+            std::ofstream saveFile(savePath);
+            
+            if(!saveFile.is_open())
+            {
+                return;
+            }
 
+            saveFile.write(reinterpret_cast<char*>(ram_Banks), sizeof(ram_Banks));
+            saveFile.close();
+        }
+    }
+
+    void cart::reloadSave()
+    {
+        // Check so see if the cartridge supports Battery Buffered ram (ie Save Files)
+        // Thus check for it BATTERY in the ROM Type name
+        if(getRomTypeName(header->cart_type).find("BATTERY") != std::string::npos)
+        {
+            // Grab the name of the ROM
+            std::string savePath = cart_filename;
+            // Replace the .gb extension with .sav
+            size_t extensionPos = savePath.find_last_of('.'); //Grabs last occurence of Extension ID
+            
+            savePath = "../../GBEmu/Saves/" + savePath.substr(0,extensionPos) + ".sav"; 
+
+            std::ifstream saveFile(savePath);
+
+            if(!saveFile.is_open())
+            {
+                return;
+            }
+
+            saveFile.read(reinterpret_cast<char*>(ram_Banks), sizeof(ram_Banks));
+            saveFile.close();
+        }
     }
 
     bool cart::load(char *filename)
@@ -540,7 +596,7 @@ namespace GBEmu
         strcpy(cart_filename, filename);
 
         //Adde the location context to the name of the rom file
-        std::string filepath = "../../GBEmu/Roms/" + std::string(filename);
+        std::string filepath = CurrentDir + std::string(filename);
 
         // Open the file and seek to the end
         std::ifstream file(filepath, std::ios::binary| std::ios::ate);
@@ -573,8 +629,14 @@ namespace GBEmu
         std::cout << "ROM Size: " << (32*1024*(1 << header->rom_size)) << " bytes" << std::endl;
         std::cout << "RAM Size: " << (int)(header->ram_size) << " bytes" << std::endl;
         std::cout << "Version: " << (int)header->version << std::endl;
-
+        
+        // Sets Up Which Memory Bankcontroller we are using
         setupBanking();
+
+        // Now We check to see if there is a save file for the ROM
+        reloadSave();
+
+        cartridgeLoaded = true;
 
         //Build Checksum
         u8 checksum = 0;

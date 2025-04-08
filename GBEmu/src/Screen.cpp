@@ -2,6 +2,7 @@
 #include "Screen.h"
 #include "Emulator.h"
 #include <thread>
+#include <Windows.h>
 
 namespace GBEmu
 {
@@ -68,6 +69,8 @@ namespace GBEmu
 
         // Main ImGui Render Windows
         renderMainWindow();
+        if(LoadRom)
+            RenderRomFolder();
         if(GBWindowReady)
             renderGBScreen();
         if(ViewRegisters)
@@ -110,16 +113,20 @@ namespace GBEmu
             {
                 if(ImGui::BeginMenu("File"))
                 {
+
                     if(ImGui::MenuItem("Reset Rom"))
                     {
                         // Stop Previous cpu_thread
                         Emu->stopCPU();
+
+                        // Save The External Ram if necessary (Save File)
+                        Emu->cartridge.save();
                         // Reinitialize Emulator
                         Emu->InitializeEmu();
                         
                         GBWindowReady = false;
-                        // ToDo: change how to get roms into program
-                        Emu->cartridge.load(const_cast<char*>("Pokemon Red (UE) [S][!].gb"));
+                        if (Emu->cartridge.CurrentRom != "")
+                            Emu->cartridge.load(const_cast<char*>(Emu->cartridge.CurrentRom.c_str()));
                         // run CPU on a separate thread
                         Emu->cpu_thread = std::thread (&Emulator::runCPU, Emu);
 
@@ -129,19 +136,7 @@ namespace GBEmu
                     }
                     else if(ImGui::MenuItem("Load Rom"))
                     {
-                        // Stop Previous cpu_thread
-                        Emu->stopCPU();
-                        // Reinitialize Emulator
-                        Emu->InitializeEmu();
-                        
-                        GBWindowReady = false;
-                        // ToDo: change how to get roms into program
-                        Emu->cartridge.load(const_cast<char*>("Legend of Zelda, The - Link's Awakening (U) (V1.2) [!].gb"));
-                        // run CPU on a separate thread
-                        Emu->cpu_thread = std::thread (&Emulator::runCPU, Emu);
-
-                        // Signal UI to render GB Screen
-                        GBWindowReady = true;
+                        LoadRom = !LoadRom;
                     }
                     else if(ImGui::MenuItem("Run"))
                     {
@@ -222,7 +217,7 @@ namespace GBEmu
 
         
         ImGui::SetNextWindowDockID(dockID, ImGuiCond_FirstUseEver);
-        if(ImGui::Begin(Emu->cartridge.cart_filename , nullptr, ImGuiWindowFlags_NoCollapse))
+        if(ImGui::Begin(Emu->cartridge.header->title , nullptr, ImGuiWindowFlags_NoCollapse))
         {   
             ImVec2 WindowSize = CalculateImageSize(160,144);
 
@@ -714,6 +709,84 @@ namespace GBEmu
 
     }
 
+    void Screen::RenderRomFolder()
+    {
+        if(ImGui::Begin("Rom Folder",nullptr,ImGuiWindowFlags_NoCollapse))
+        {
+            ImGui::Text("Current Rom Directory: ");
+            ImGui::SameLine();
+            ImGui::InputText("##Current Rom Directory",Emu->cartridge.CurrentDir,sizeof(Emu->cartridge.CurrentDir));
+            
+            ImGui::Separator();
+            ImGui::Separator();
+
+            for(auto& Rom : RomList)
+            {
+                if(ImGui::Selectable(Rom.c_str()))
+                {
+                    Emu->cartridge.CurrentRom = Rom;
+                }
+            }
+
+            ImGui::Separator();
+            ImGui::Separator();
+
+            if(ImGui::Button("Scan Directory"))
+            {
+                ScanForRoms(Emu->cartridge.CurrentDir);
+            }
+            ImGui::SameLine();
+            if(ImGui::Button("LoadRom"))
+            {
+                // Stop Previous cpu_thread
+                Emu->stopCPU();
+                // Save The External Ram if necessary (Save File)
+                Emu->cartridge.save();
+                // Reinitialize Emulator
+                Emu->InitializeEmu();
+                
+                GBWindowReady = false;
+                if (Emu->cartridge.CurrentRom != "")
+                    Emu->cartridge.load(const_cast<char*>(Emu->cartridge.CurrentRom.c_str()));
+                // run CPU on a separate thread
+                Emu->cpu_thread = std::thread (&Emulator::runCPU, Emu);
+
+                // Signal UI to render GB Screen
+                GBWindowReady = true;
+            }
+
+            ImGui::Text( "Current Rom:  %s",Emu->cartridge.CurrentRom.c_str());
+        }
+        ImGui::End();
+    }
+
+    void Screen::ScanForRoms(std::string Dir)
+    {
+        // Clear the Rom list to not leave "Phantom Files"
+        RomList.clear();
+
+        // We only want gb games
+        std::string RomType = "*.gb";
+
+        WIN32_FIND_DATA findFiles;
+
+        HANDLE hFind = FindFirstFile((Dir + "\\" + RomType).c_str(), &findFiles);
+
+        if (hFind == INVALID_HANDLE_VALUE) {
+            std::cerr << "Error opening directory or no files found." << std::endl;
+            return;
+        }
+    
+        do {
+            // Skip "." and ".." entries (current and parent directories)
+            if (findFiles.cFileName[0] != '.') {
+                RomList.emplace_back(findFiles.cFileName);
+            }
+        } while (FindNextFile(hFind, &findFiles) != 0);
+    
+        FindClose(hFind);
+    }
+
     void Screen::pollForEvents()
     {
         SDL_Event event;
@@ -756,6 +829,7 @@ namespace GBEmu
                     }
                     break;
                 case SDL_EVENT_KEY_UP:
+
                     switch(event.key.scancode)
                     {
                         case SDL_SCANCODE_W:

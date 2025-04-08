@@ -14,8 +14,9 @@ namespace GBEmu
         
         if(!isHalted)
         {
-            
+            // Read an opcode from Rom
             opcode = read_memory(reg.pc.read());
+            // If Opcode is CB we read another opcode and use a different instruction
             if (opcode == 0xCB)
             {   
                 opcode = read_memory(reg.pc.read());
@@ -31,11 +32,11 @@ namespace GBEmu
                     std::cout << "Debug Message: " << DBG << std::endl;
                 }
 
-                // if(reg.pc.read() -1  == 0x20F)
-                // {
-                //     std::cout << "breakpoint" << std::endl;
-                //     Emu->debug = true;
-                // }
+                if(reg.pc.read() -1  == 0x40CE)
+                {
+                    std::cout << "breakpoint" << std::endl;
+                    //Emu->debug = true;
+                }
     
                 executeInstruction();
             }
@@ -725,6 +726,8 @@ namespace GBEmu
             case 0xFF: currentInstruction = Instruction("RST 38H", 1, 16); RST_u8(0x38); break;
             default: isHalted = true; break;
         }
+
+
 
     };
     

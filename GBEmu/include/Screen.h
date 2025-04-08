@@ -100,7 +100,7 @@ namespace GBEmu
         ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
         ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_MenuBar;
 
-        ImGuiWindowFlags textureWindows = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar;
+        ImGuiWindowFlags textureWindows = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoNavFocus;
         // SDL Window Flags
         SDL_WindowFlags SDLwindowFlags = SDL_WINDOW_RESIZABLE;
 
@@ -151,6 +151,12 @@ namespace GBEmu
         bool ViewSpriteData = false;
         void renderSprites();
 
+        //Rom List Scan
+        bool LoadRom = false;
+        void RenderRomFolder(); 
+        void ScanForRoms(std::string Dir);
+        std::vector<std::string> RomList;
+        char DirBuffer[256];
 
         // GB colors
 

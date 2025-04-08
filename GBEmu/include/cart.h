@@ -22,9 +22,11 @@ namespace GBEmu
 
         ~cart()
         {
+            if(cartridgeLoaded)
+                save();
             std::cout << "Freeing Rom Data" << std::endl;
             freeRomData();
-
+        
         };
 
         struct cart_header
@@ -106,6 +108,15 @@ namespace GBEmu
         u8 read(u16 addr);
         //Write a byte to the ROM/RAM
         void write(u16 addr, u8 data);
+        //Save External RAM to .sav File
+        void save();
+        //Reload External RAM from .save File if it exists
+        void reloadSave();
+
+        // Bool to check if the A Cartridge was previously loaded
+        bool cartridgeLoaded = false;
+        std::string CurrentRom = "";
+        char CurrentDir[256] = "../../GBEmu/Roms/";
 
     };
 }

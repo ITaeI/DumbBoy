@@ -142,10 +142,13 @@ namespace GBEmu
                 cartridge.ClockTick();
                 ticks = 0;
             }
+            
+            // This Will Slow Down the CPU thread to (Closely match GB Hardware)
             static auto LastCycle = std::chrono::steady_clock::now();
             auto target = LastCycle + std::chrono::nanoseconds(1000);
             std::this_thread::sleep_until(target);
             LastCycle = target;
+            
             dma.tick();
         }
     }
