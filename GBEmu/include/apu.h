@@ -9,17 +9,31 @@ namespace GBEmu
     {
         private:
         Emulator *Emu;
+        // 16 Bytes Long 2 samples Each (4 bits)
+        // reads upper nibble first starting at FF30
+        // When Channel 3 is started intially the lower nibble of the first byte is read first
         u8 waveRam[16]; // 16 bytes
         public:
 
         void connectAPU(Emulator *emu);
         void init();
+        void tick();
         u8 read(u16 address);
         void write(u16 address, u8 data);
 
+        // Audio Register NRxy scheme 
+        // x: Channel number (1-4, or 5 = Global Register)
+        // Note: (index number goes from 0-4 and is offset by -1)
+        // y: Register ID within channel
         struct{
-
+            u8 NRx0[5]; // in some channel specific feature if present
+            u8 NRx1[5]; // controls the length timer
+            u8 NRx2[5]; // controls the volume and the envelope
+            u8 NRx3[5]; // controls the period 
+            u8 NRx4[5]; // has the channel’s trigger and length timer enable bits, as well as any leftover bits of period
         }audioRegs;
+
+        u8 DIVAPU;
 
         // How The APU runs:
 
@@ -48,7 +62,6 @@ namespace GBEmu
 
         // Frequency
         // instead of frequency the apu uses durations/periods to make sound (technically negative periods)
-
 
     };
 }

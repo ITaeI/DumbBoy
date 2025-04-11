@@ -139,8 +139,8 @@ namespace GBEmu
 
     void cpu::write_memory(u16 addr, u8 data)
     {   
-        Emu->ClockCycle(1);
         Emu->systemBus.write(addr, data);
+        Emu->ClockCycle(1);
     }
 
     u16 cpu::fetch16Bit()

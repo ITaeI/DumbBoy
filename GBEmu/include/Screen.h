@@ -27,7 +27,15 @@ namespace GBEmu
         SDL_Texture *BGTexture;
         SDL_Surface *BGSurface;
 
+        // 0: GB Screen W
+        // 1: Tile Screen W
+        // 2: Background Screen
+        // Note Scaled by 4
         float imageWidths[3] = {640, 512, 1024};
+        // 0: GB Screen H
+        // 1: Tile Screen H
+        // 2: Background Screen H
+        // Note Scaled by 4
         float imageHeights[3] = {576, 768, 1024};
 
         enum images
@@ -69,11 +77,10 @@ namespace GBEmu
             ImGui_ImplSDL3_Shutdown();
             ImGui::DestroyContext();
 
-            //stop SDL3
+            // stop SDL3
             SDL_DestroyRenderer(renderer);
             SDL_DestroyWindow(window);
-
-
+ 
             SDL_DestroyTexture(tileTexture);
             SDL_DestroySurface(tileSurface);
 

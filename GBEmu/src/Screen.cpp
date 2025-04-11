@@ -15,14 +15,20 @@ namespace GBEmu
 
     SDL_AppResult Screen::InitializeScreen(std::string Name, int Width, int Height)
     {
+        
         title = Name; SCREEN_WIDTH = Width; SCREEN_HEIGHT = Height;
         SDL_SetAppMetadata("GBEmu", "1.0", "ITaeI");
 
         // Initialize SDL
-        if (!SDL_Init(SDL_INIT_VIDEO)) {
+        if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
             SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
             return SDL_APP_FAILURE;
         }
+
+
+        // We need to define audio format
+        SDL_DEFINE_AUDIO_FORMAT(0, 0, 0, 8); // Since The GB is using 4: 8 BIT UNSIGNED 
+
 
         // Create Window
         window = SDL_CreateWindow(Name.c_str(), SCREEN_WIDTH, SCREEN_HEIGHT, SDLwindowFlags );
@@ -116,22 +122,25 @@ namespace GBEmu
 
                     if(ImGui::MenuItem("Reset Rom"))
                     {
-                        // Stop Previous cpu_thread
-                        Emu->stopCPU();
 
-                        // Save The External Ram if necessary (Save File)
-                        Emu->cartridge.save();
-                        // Reinitialize Emulator
-                        Emu->InitializeEmu();
-                        
-                        GBWindowReady = false;
                         if (Emu->cartridge.CurrentRom != "")
-                            Emu->cartridge.load(const_cast<char*>(Emu->cartridge.CurrentRom.c_str()));
-                        // run CPU on a separate thread
-                        Emu->cpu_thread = std::thread (&Emulator::runCPU, Emu);
+                        {
+                            // Stop Previous cpu_thread
+                            Emu->stopCPU();
 
-                        // Signal UI to render GB Screen
-                        GBWindowReady = true;
+                            // Save The External Ram if necessary (Save File)
+                            Emu->cartridge.save();
+                            // Reinitialize Emulator
+                            Emu->InitializeEmu();
+                            
+                            GBWindowReady = false;
+                            Emu->cartridge.load(const_cast<char*>(Emu->cartridge.CurrentRom.c_str()));
+                            // run CPU on a separate thread
+                            Emu->cpu_thread = std::thread (&Emulator::runCPU, Emu);
+
+                            // Signal UI to render GB Screen
+                            GBWindowReady = true;
+                        }
 
                     }
                     else if(ImGui::MenuItem("Load Rom"))
@@ -217,14 +226,16 @@ namespace GBEmu
 
         
         ImGui::SetNextWindowDockID(dockID, ImGuiCond_FirstUseEver);
-        if(ImGui::Begin(Emu->cartridge.header->title , nullptr, ImGuiWindowFlags_NoCollapse))
+
+
+        if(ImGui::Begin(Emu->cartridge.CurrentRom.c_str(), nullptr, ImGuiWindowFlags_NoCollapse))
         {   
             ImVec2 WindowSize = CalculateImageSize(160,144);
 
             ImGui::Image((ImTextureID)LCDTexture, WindowSize); 
         }
-
         ImGui::End();
+
     }
 
     void Screen::renderRegistersWindow()
@@ -410,7 +421,7 @@ namespace GBEmu
                     ImGui::Text("DIV");
     
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("[ 0x%02X ]", Emu->timer.timerRegs.DIV.read());
+                    ImGui::Text("[ 0x%02X ]", Emu->timer.timerRegs.DIV.read() >> 8);
     
                     ImGui::TableSetColumnIndex(2);
                     ImGui::Text("TIMA");
@@ -738,21 +749,26 @@ namespace GBEmu
             ImGui::SameLine();
             if(ImGui::Button("LoadRom"))
             {
-                // Stop Previous cpu_thread
-                Emu->stopCPU();
-                // Save The External Ram if necessary (Save File)
-                Emu->cartridge.save();
-                // Reinitialize Emulator
-                Emu->InitializeEmu();
-                
-                GBWindowReady = false;
-                if (Emu->cartridge.CurrentRom != "")
-                    Emu->cartridge.load(const_cast<char*>(Emu->cartridge.CurrentRom.c_str()));
-                // run CPU on a separate thread
-                Emu->cpu_thread = std::thread (&Emulator::runCPU, Emu);
 
-                // Signal UI to render GB Screen
-                GBWindowReady = true;
+                if (Emu->cartridge.CurrentRom != "")
+                {
+                    // Stop Previous cpu_thread
+                    Emu->stopCPU();
+                    // Save The External Ram if necessary (Save File)
+                    Emu->cartridge.save();
+                    // Reinitialize Emulator
+                    Emu->InitializeEmu();
+                    
+                    GBWindowReady = false;
+                    if (Emu->cartridge.CurrentRom != "")
+                        Emu->cartridge.load(const_cast<char*>(Emu->cartridge.CurrentRom.c_str()));
+                    // run CPU on a separate thread
+                    Emu->cpu_thread = std::thread (&Emulator::runCPU, Emu);
+    
+                    // Signal UI to render GB Screen
+                    GBWindowReady = true;
+                }
+                
             }
 
             ImGui::Text( "Current Rom:  %s",Emu->cartridge.CurrentRom.c_str());

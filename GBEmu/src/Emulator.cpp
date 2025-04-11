@@ -7,6 +7,8 @@
     adressBus - The Gameboy Address Bus
     PPU - The Gameboy Pixel Processing Unit
     Timer - The Gameboy Timer
+    JoyPad - Game inputs
+    APU - Audio Prcessing Unit
 
 */ 
 
@@ -24,7 +26,7 @@ namespace GBEmu
         ppu.connectPPU(this);
         dma.connectDMA(this);
         joypad.connectJoypad(this);
-
+        apu.connectAPU(this);
     }
 
     Emulator::~Emulator()
@@ -130,6 +132,7 @@ namespace GBEmu
 
         for(int i = M_Cycles; i > 0; i--)  
         {
+
             for(int j = 0; j < 4; j++)
             {
                 ticks++;
@@ -144,10 +147,18 @@ namespace GBEmu
             }
             
             // This Will Slow Down the CPU thread to (Closely match GB Hardware)
-            static auto LastCycle = std::chrono::steady_clock::now();
-            auto target = LastCycle + std::chrono::nanoseconds(1000);
+            static thread_local auto LastCycle = std::chrono::steady_clock::now();
+            auto target = LastCycle + std::chrono::nanoseconds(950);
             std::this_thread::sleep_until(target);
-            LastCycle = target;
+            auto now = std::chrono::steady_clock::now();
+            if(now  > (target + std::chrono::milliseconds(10)))
+            {
+                LastCycle = now;
+            }
+            else
+            {
+                LastCycle = target;
+            }
             
             dma.tick();
         }

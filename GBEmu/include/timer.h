@@ -11,13 +11,22 @@ namespace GBEmu
         Emulator *Emu;
 
         // TIMA Overflow Logic
-        bool TIMAOverflowOccured = false;
+        
+        bool OverflowOccured = false;
         int overflowCounter = 0;
+        
 
         public:
         struct TimerRegs
         {
-            Register8Bit TIMA, TMA, TAC;
+            // TMA - Timer Counter
+            Register8Bit TIMA; 
+            // TMA - Timer Modulo
+            Register8Bit TMA;
+            // TAC - Timer Control
+            // 2: Enable
+            // 1-0: Mode
+            Register8Bit TAC;
             Register16Bit DIV;
         };
         
@@ -27,6 +36,7 @@ namespace GBEmu
     
         void timer_tick();
         void timer_init();
+
         void timer_write(u16 address, u8 data);
         u8 timer_read(u16 adress);
     };

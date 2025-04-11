@@ -10,6 +10,7 @@
 #include "ppu.h"
 #include "dma.h"
 #include "joypad.h"
+#include "apu.h"
 #include <thread>
 
 namespace GBEmu
@@ -31,7 +32,7 @@ namespace GBEmu
         PPU ppu;
         DMA dma;
         Joypad joypad;
-
+        APU apu;
 
 
         // Emulator Constructor
