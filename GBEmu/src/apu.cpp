@@ -1,6 +1,6 @@
 #include "apu.h"
 #include "Emulator.h"
-
+#include <math.h>
 
 namespace GBEmu
 {
@@ -10,6 +10,45 @@ namespace GBEmu
         Emu = emu;
     }
 
+
+    void APU::init()
+    {
+        ChannelState.fill(0);
+        DACState.fill(0);
+        LengthCounter.fill(0);
+    }
+
+    u8 APU::waveFormGenerator(u8 Phase,u8 duty)
+    {
+        std::array<u8,8> waveform;
+        switch(duty)
+        {
+            case 0b00:
+                waveform = {0,0,0,0,0,0,0,1}; // 12.5%
+            case 0b01:
+                waveform = {1,0,0,0,0,0,0,1}; // 25%
+            case 0b10:
+                waveform = {1,0,0,0,0,1,1,1}; // 50%
+            case 0b11:
+                waveform = {0,1,1,1,1,1,1,0}; // 75%
+        }
+        return waveform[Phase];
+    }
+
+    void APU::FrameSequencer()
+    {
+        // Occurs Every 2 Low Frequency Clocks (DIVAPU)
+        LengthCTRClock = (DIVAPU % 2 == 0) ? true : false;
+        // Occurs Every 4 Low Frequency Clocks (DIVAPU)
+        SweepClock = (DIVAPU % 4 == 0) ? true : false;
+        // Occurs Every 8 Low Frequency Clocks (DIVAPU)
+        VolEnvelopeClock = (DIVAPU % 8 == 0) ?  true : false;
+    }
+
+    void APU::Ch1Sweep()
+    {
+
+    }
     void APU::tick()
     {
 
@@ -36,7 +75,7 @@ namespace GBEmu
             // if period overflows (over 0x7FF) the channel turns off
             // This occurs even if sweep iterations are disabled by the pace being 0.
 
-            return audioRegs.NRx0[0];
+            return Channel1.NR10.Raw;
             break;
         case 0xFF11:
 
@@ -51,7 +90,7 @@ namespace GBEmu
 
             // the higher the value is the shorter the time before it gets cut
 
-            return audioRegs.NRx1[0] & 0xC0;
+            return Channel1.NR11.Raw & 0xC0;
             break;
         case 0xFF12:
             
@@ -69,7 +108,7 @@ namespace GBEmu
 
             // setting bits 3-7 to 0 will turn off DAC and channel, and cause audio pop
 
-            return audioRegs.NRx2[0];
+            return Channel1.NR12.Raw;
             break;
         case 0xFF13:
 
@@ -90,28 +129,28 @@ namespace GBEmu
             //   - Sweep does a bunch of things?
             // 6: Length Enable
             // 2-0: upper 3 bits of period
-            return audioRegs.NRx4[0] & 0x40;
+            return Channel1.NR14.Raw & 0x40;
             break;
         case 0xFF16:
             // Channel 2 Lacks Sweep mechanics but other regs remain same as Channel 1
-            return audioRegs.NRx1[1] & 0xC0;
+            return Channel2.NR21.Raw & 0xC0;
             break;
         case 0xFF17:
-            return audioRegs.NRx2[1];
+            return Channel2.NR22.Raw;
             break;
         case 0xFF18:
             // write only
             return 0xFF;
             break;
         case 0xFF19:
-            return audioRegs.NRx4[1] & 0x40;
+            return Channel2.NR24.Raw & 0x40;
             break;
         case 0xFF1A:
             // Channel 3 - Wave Output
             // NR30 - Channel 3 DAC Enable
 
             // 7: Dac on/off  - turns off the channel as well
-            return audioRegs.NRx0[2];
+            return Channel3.NR30.Raw;
             break;
         case 0xFF1B:
             // Length timer Write only
@@ -125,17 +164,18 @@ namespace GBEmu
             // - 0b01 (100% sound) uses wave ram samples as is
             // - 0b10 (50% sound) uses shifted wave ram samples (shifts to the right once)
             // - 0b11 (50% sound) uses shifted wave ram samples (shifts to the right twice)
-            return audioRegs.NRx2[2];
+            return Channel3.NR32.Raw;
             break;
         case 0xFF1D:
             // same as channels 1-2 NR33
             // slightly different timings
+            return 0xFF;
             break;
         case 0xFF1E:
             // same as channels 1-2
             // except no envelope functionality
             // instead resets wave ram index
-            return audioRegs.NRx4[2] & 0x40;
+            return Channel3.NR34.Raw & 0x40;
             break;
         case 0xFF20:
             // Channel 4 - Noise
@@ -148,7 +188,7 @@ namespace GBEmu
         case 0xFF21:
             // volume and envelope - NR42
             // same as NR12
-            return audioRegs.NRx2[3];
+            return Channel4.NR42.Raw;
             break;
         case 0xFF22:
             // Frequency and randomness - NR43
@@ -161,16 +201,16 @@ namespace GBEmu
             // The frequency the LFSR is clocked at
             // 262144/ (clock divider * (2^shift))
             // if clock divider = 0 it uses 0.5 instead
-            return audioRegs.NRx3[3];
+            return Channel4.NR43.Raw;
             break;
         case 0xFF23:
-            // Control - NR43
+            // Control - NR44
             // - Ch4 is enabled.
             // - If the length timer expired it is reset.
             // - Envelope timer is reset.
             // - Volume is set to contents of NR42 initial volume.
             // - LFSR bits are reset.
-            return audioRegs.NRx4[3] & 0x40;
+            return Channel4.NR44.Raw & 0x40;
             break;
         case 0xFF24:
             // Master Volume and VIN Panning
@@ -178,19 +218,19 @@ namespace GBEmu
             // 6-4: Left Volume - Scales Master volume
             // 3: Vin Right = 0 if no external hardware in use
             // 2-0: Right Volume - Scales Master volume
-            return audioRegs.NRx0[4];
+            return GlobalRegs.NR50.Raw;
             break;
         case 0xFF25:
             // Sound Panning - NR51
             // 7-4 ch 4-1 left
             // 3-0 ch 4-1 right
-            return audioRegs.NRx1[4];
+            return GlobalRegs.SoundPanningNR51.Raw;
             break;
         case 0xFF26:
             // Audio Master Control - NR52
             // 7: Audio Master control on/off 
             // 0-3: Ch 1-4 on?
-            return audioRegs.NRx2[4];
+            return GlobalRegs.AudioMasterControlNR52.Raw;
         default:
             return waveRam[address - 0xFF30];
             break;
@@ -201,10 +241,10 @@ namespace GBEmu
         // When APU is not turned on only NR52 is writeable
         if(address == 0xFF26)
         {
-            audioRegs.NRx2[4] = (audioRegs.NRx2[4] & 0x7F) | (data & 0x80);
+            GlobalRegs.AudioMasterControlNR52.Raw = (GlobalRegs.AudioMasterControlNR52.Raw & 0x7F) | (data & 0x80);
             return;
         }
-        else if (!(audioRegs.NRx2[4] & 0x80))
+        else if (!(GlobalRegs.AudioMasterControlNR52.OnOff))
         {
             return;
         }
@@ -212,24 +252,58 @@ namespace GBEmu
         switch (address)
         {
         case 0xFF10:
+            Channel1.NR10.Raw = data;
             break;
         case 0xFF11:
+            // Bits 7 and 6 are Channel1's wave duty
+            // Bits 5-0 are initial length timer
+
+            Channel1.NR11.InitialTimerLength = 64 - (data & 0x3F);
+            Channel1.NR11.Duty = data >> 6;
             break;
         case 0xFF12:
+            Channel1.NR12.Raw = data;
             break;
         case 0xFF13:
+            Channel1.NR13 = data;
             break;
         case 0xFF14:
+            Channel1.NR14.Raw = data;
+
+            if(data & (1<<7))
+            {
+
+            }
+            break;
+        case 0xFF16:
+            // same as channel 1 but for channel 2
+
+            break;
+        case 0xFF17:
+            break;
+        case 0xFF18:
+            break;
+        case 0xFF19:
+            if(data & (1<<7))
+            {
+                // Trigger Channel 2
+            }
             break;
         case 0xFF1A:
             break;
         case 0xFF1B:
+            // for wave channel Initial length timer 256-0
+
             break;
         case 0xFF1C:
             break;
         case 0xFF1D:
             break;
         case 0xFF1E:
+            if(data & (1<<7))
+            {
+                // Trigger Channel 3
+            }
             break;
         case 0xFF20:
             break;
@@ -238,6 +312,10 @@ namespace GBEmu
         case 0xFF22:
             break;
         case 0xFF23:
+            if(data & (1<<7))
+            {
+                // Trigger Channel 4
+            }
             break;
         case 0xFF24:
             break;

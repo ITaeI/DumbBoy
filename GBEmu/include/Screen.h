@@ -171,9 +171,11 @@ namespace GBEmu
         //const Uint32 colors[4] = {0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000};
         // Original Green
         const Uint32 colors[4] = { 0xFF9BBC0F, 0xFF8BAC0F, 0xFF306230, 0xFF0F380F };
+
         // Aspect Ratio Calculation
         ImVec2 CalculateImageSize(float W, float H);
-        ImVec2 CalculateScreenLocation();
+        // GB Screen Center Calculation
+        void CenterTexture(ImVec2 TextureSize);
 
         //Event Handling
         void pollForEvents();

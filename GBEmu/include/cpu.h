@@ -82,6 +82,7 @@ namespace GBEmu
         Register8Bit IF;
         bool enablingIME;
         bool IME;
+        bool HaltBug = false;
 
         void HandleInterrupts();
 

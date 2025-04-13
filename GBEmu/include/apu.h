@@ -1,5 +1,6 @@
 #pragma once
 #include "common.h"
+#include <array>
 
 
 namespace GBEmu
@@ -25,15 +26,287 @@ namespace GBEmu
         // x: Channel number (1-4, or 5 = Global Register)
         // Note: (index number goes from 0-4 and is offset by -1)
         // y: Register ID within channel
+
+        // Channel 1 Registers
+        struct
+        {
+            union 
+            {
+                u8 Raw;
+
+                struct
+                {
+                    u8 SweepStep : 3;
+                    u8 SweepDirection : 1;
+                    u8 SweepPace : 3;
+                    u8 Unused : 1;
+                };
+                
+            }NR10;
+
+            union 
+            {
+                u8 Raw;
+                struct
+                {
+                   u8 InitialTimerLength : 6;
+                   u8 Duty : 2;
+
+                };
+
+            }NR11;
+
+            // Volume and Envelope Pace
+            union
+            {
+                u8 Raw;
+                struct
+                {
+                    u8 SweepPace : 3;
+                    u8 EnvDirection : 1;
+                    u8 InitialVolume : 4;
+
+                };
+
+            }NR12;
+
+            // Channel 1 Lo period/frequency
+            u8 NR13;
+
+            union
+            {
+                u8 Raw;
+                struct{
+                    u8 UpperPeriod : 3;
+                    u8 Unused : 3;
+                    u8 LengthEnable : 1;
+                    u8 Trigger : 1;
+                };
+
+            }NR14;
+
+            
+        }Channel1;
+
+        // Channel 2 Registers
+        struct
+        {
+            union 
+            {
+                u8 Raw;
+                struct
+                {
+                   u8 InitialTimerLength : 6;
+                   u8 Duty : 2;
+
+                };
+
+            }NR21;
+
+            union
+            {
+                u8 Raw;
+                struct
+                {
+                    u8 SweepPace : 3;
+                    u8 EnvDirection : 1;
+                    u8 InitialVolume : 4;
+
+                };
+
+            }NR22;
+
+            // Channel 2 lo period/frequency
+            u8 NR23;
+
+            union
+            {
+                u8 Raw;
+                struct{
+                    u8 UpperPeriod : 3;
+                    u8 Unused : 3;
+                    u8 LengthEnable : 1;
+                    u8 Trigger : 1;
+                };
+
+            }NR24;
+            
+        }Channel2;
+
+        // Channel 3 Registers
+        struct
+        {
+            union 
+            {
+                u8 Raw;
+
+                struct
+                {
+                    u8 Unused : 7;
+                    u8 DACOnOff : 1;
+                };
+                
+            }NR30;
+
+            // Inital Length Timer
+            u8 NR31;
+
+            union
+            {
+                u8 Raw;
+                struct
+                {
+                    u8 Unused5Bits : 5;
+                    u8 OutputLevel : 2;
+                    u8 Unused1Bit : 1;
+
+                };
+
+            }NR32;
+
+            // Channel 3 lo period/frequency
+            u8 NR33;
+
+            union
+            {
+                u8 Raw;
+                struct{
+                    u8 UpperPeriod : 3;
+                    u8 Unused : 3;
+                    u8 LengthEnable : 1;
+                    u8 Trigger : 1;
+                };
+
+            }NR34;
+            
+        }Channel3;
+
+
+        struct
+        {
+
+            // Inital Length Timer
+            u8 NR41;
+
+            union
+            {
+                u8 Raw;
+                struct
+                {
+                    u8 SweepPace : 3;
+                    u8 EnvDirection : 1;
+                    u8 InitialVolume : 4;
+
+                };
+
+            }NR42;
+
+            // Channel 3 lo period/frequency
+
+            union apu
+            {
+                u8 Raw;
+                struct 
+                {
+                    u8 ClockDivider : 3;
+                    u8 LFSRWidth : 1;
+                    // Note if value is zero use 0.5 instead
+                    u8 ClockShift : 4;
+
+                };
+                
+            }NR43;
+            
+            
+
+            union
+            {
+                u8 Raw;
+                struct{
+
+                    u8 Unused : 6;
+                    u8 LengthEnable : 1;
+                    u8 Trigger : 1;
+                };
+
+            }NR44;
+
+            u8 LFSR;
+            
+        }Channel4;
+
         struct{
-            u8 NRx0[5]; // in some channel specific feature if present
-            u8 NRx1[5]; // controls the length timer
-            u8 NRx2[5]; // controls the volume and the envelope
-            u8 NRx3[5]; // controls the period 
-            u8 NRx4[5]; // has the channel’s trigger and length timer enable bits, as well as any leftover bits of period
-        }audioRegs;
+
+
+            union{
+
+                u8 Raw;
+
+                struct{
+                    u8 Ch1On :1;
+                    u8 Ch2On :1;
+                    u8 Ch3On :1;
+                    u8 Ch4On :1;
+                    u8 Unused: 3;
+                    u8 OnOff : 1;
+                };
+
+            }AudioMasterControlNR52;
+
+
+            union{
+
+                u8 Raw;
+
+                struct{
+                    u8 Ch1Right :1;
+                    u8 Ch2Right :1;
+                    u8 Ch3Right :1;
+                    u8 Ch4Right :1;
+                    u8 Ch1Left :1;
+                    u8 Ch2Left :1;
+                    u8 Ch3Left :1;
+                    u8 Ch4Left :1;
+                };
+
+            }SoundPanningNR51;
+
+            union{
+
+                u8 Raw;
+
+                struct{
+                    u8 RightVol :3;
+                    u8 VinRight :1;
+                    u8 LeftVol :3;
+                    u8 VinLeft :1;
+                };
+
+            }NR50;
+
+        }GlobalRegs;
+        
 
         u8 DIVAPU;
+
+        // On or Off
+        std::array<bool,4> DACState;
+        std::array<bool,4> ChannelState;
+
+        // Each Channel has a length counter
+        // Which is clocked at 256hz
+        std::array<u8,4> LengthCounter;
+
+        u8 waveFormGenerator(u8 Phase,u8 duty);
+        
+        void Ch1Sweep();
+
+        void FrameSequencer();
+        bool SweepClock = false;
+        bool LengthCTRClock = false;
+        bool VolEnvelopeClock = false;
+
+
 
         // How The APU runs:
 

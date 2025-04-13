@@ -29,6 +29,11 @@ namespace GBEmu
             Emu->apu.DIVAPU++;
         }
 
+        if(TIMAOverflowOccured)
+        {
+            overflowCounter++;
+        }
+
         if (timerRegs.TAC.read() & 0b100)
         {
             switch (timerRegs.TAC.read() & 0b11)
@@ -57,12 +62,23 @@ namespace GBEmu
                 timerRegs.TIMA.Increment();
                 if(timerRegs.TIMA.read() == 0x00)
                 {
-                    timerRegs.TIMA.write(timerRegs.TMA.read());
-                    Emu->processor.IF.setBit(Timer_Int, true); // Request Timer Interrupt
+                    TIMAOverflowOccured = true;
                 }
 
             }
 
+        }
+
+        // For 4 T-Cycles after TIMA has overflowed the value will stay 0x00
+        if(TIMAOverflowOccured)
+        {
+            if(overflowCounter == 4)
+            {
+                overflowCounter = 0;
+                TIMAOverflowOccured = false;
+                timerRegs.TIMA.write(timerRegs.TMA.read());
+                Emu->processor.IF.setBit(Timer_Int, true); // Request Timer Interrupt
+            }
         }
     }
 

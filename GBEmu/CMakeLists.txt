@@ -50,5 +50,5 @@ target_include_directories(${EXECUTABLE_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/include
 
 # --- Link Libraries together --- #
 target_link_libraries(imgui PUBLIC SDL3::SDL3)
-target_link_libraries(${EXECUTABLE_NAME} PRIVATE imgui)
+target_link_libraries(${EXECUTABLE_NAME} PRIVATE imgui) 
 

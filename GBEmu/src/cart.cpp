@@ -582,6 +582,7 @@ namespace GBEmu
 
             if(!saveFile.is_open())
             {
+                std::cout << "Failed To load Save" << std::endl;
                 return;
             }
 
@@ -595,7 +596,12 @@ namespace GBEmu
         // Copy the filename to the cart context
         strcpy(cart_filename, filename);
 
-        //Adde the location context to the name of the rom file
+        //Add the location context to the file path
+        size_t DirLength = strlen(CurrentDir);
+        if(CurrentDir[DirLength-1] != '/')
+        {
+            CurrentDir[DirLength] = '/';
+        }
         std::string filepath = CurrentDir + std::string(filename);
 
         // Open the file and seek to the end

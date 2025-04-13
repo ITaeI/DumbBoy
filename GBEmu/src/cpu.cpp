@@ -16,6 +16,11 @@ namespace GBEmu
         {
             // Read an opcode from Rom
             opcode = read_memory(reg.pc.read());
+            if(HaltBug)
+            {
+                reg.pc.Decrement();
+                HaltBug = false;
+            }
             // If Opcode is CB we read another opcode and use a different instruction
             if (opcode == 0xCB)
             {   
@@ -31,17 +36,12 @@ namespace GBEmu
                     Emu->systemBus.write(0xFF02,0x00);
                     std::cout << "Debug Message: " << DBG << std::endl;
                 }
-
-                if(reg.pc.read() -1  == 0x40CE)
-                {
-                    std::cout << "breakpoint" << std::endl;
-                    //Emu->debug = true;
-                }
     
                 executeInstruction();
             }
         }
-        else{
+        else
+        {
 
             Emu->ClockCycle(1);
             if(IF.read())
@@ -50,6 +50,7 @@ namespace GBEmu
             }
             
         }
+
 
         if(IME)
         {
@@ -1882,7 +1883,21 @@ namespace GBEmu
     //Look more into this
     void cpu::HALT()
     {
-        isHalted = true;
+        if (IME)
+        {
+            isHalted = true;
+        }
+        else
+        {
+            if((IE.read() & IF.read() & 0x1F) != 0)
+            {
+                HaltBug = true;
+            }
+            else
+            {
+                isHalted = true;
+            }
+        }
     }
 
     void cpu::STOP()

@@ -12,7 +12,7 @@ namespace GBEmu
 
         // TIMA Overflow Logic
         
-        bool OverflowOccured = false;
+        bool TIMAOverflowOccured = false;
         int overflowCounter = 0;
         
 
