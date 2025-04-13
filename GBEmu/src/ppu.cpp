@@ -15,6 +15,8 @@ namespace GBEmu
         // Reset For new use
         memset(VRAM, 0, 0x2000 * sizeof(u8));
         memset(ScreenBuffer, 0, sizeof(ScreenBuffer)); // used only for debugging atm
+        CurrentVRAMBank = 1;
+        
         Mode = 2;
         dots = 0;
 
@@ -127,6 +129,12 @@ namespace GBEmu
                 {
                     dots -= 172;
                     Mode = 0;
+
+                    // if HBlank DMA is enabled Transfer 10 bytes to VRAM
+                    if(Emu->dma.HBlankDMA_Enabled && !Emu->processor.isHalted)
+                    {
+                        Emu->dma.HBlankDMA();
+                    }
                     lcdRegs.STAT.write((lcdRegs.STAT.read() & 0xFC) | Mode);
                     if(lcdRegs.STAT.readBit(3))
                     {
@@ -425,7 +433,7 @@ namespace GBEmu
                 break;
             case 0xFF46:
 
-                if(Emu->dma.in_progress)
+                if(Emu->dma.OamDMA_InProgress)
                 {
                     return;
                 }
@@ -441,7 +449,7 @@ namespace GBEmu
 
                     // During DMA the ppu cannot read OAM as well
                 lcdRegs.DMA.write(data); // stores start adress
-                Emu->dma.StartTransfer(data); // Starts DMA transfer
+                Emu->dma.StartOAMTransfer(data); // Starts DMA transfer
                 break;
             case 0xFF47:
                 lcdRegs.BGP.write(data);

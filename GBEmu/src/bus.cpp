@@ -47,7 +47,7 @@ namespace GBEmu
         }
         else if (addr < 0xFEA0)
         {
-            if(Emu->dma.in_progress)
+            if(Emu->dma.OamDMA_InProgress)
             {
                 return 0xFF;
             }
@@ -194,7 +194,7 @@ namespace GBEmu
                     // only occurs for opaque pixels
                     // highest Object priority attribute determines last drawn
 
-                if(Emu->dma.in_progress)
+                if(Emu->dma.OamDMA_InProgress)
                 {
                     return;
                 }

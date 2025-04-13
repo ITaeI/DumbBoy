@@ -86,6 +86,9 @@ namespace GBEmu
 
         void HandleInterrupts();
 
+        // CGB Double Speed
+        bool SwitchArmed;
+
         // Debug Stuff
         std::string DBG;
         // Instructions

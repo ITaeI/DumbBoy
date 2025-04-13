@@ -8,11 +8,16 @@ namespace GBEmu
     {
         private:
 
-        u8 wram[0x2000];
+        // Switchable WRAM
+        u8 wram[0x1000];
+        // DMG Bank 1 only, CGB Banks 1-7
+        u8 wramBanks[0x7000];
         u8 hram[0x80];
 
         Emulator *Emu;
         public:
+
+        u8 CurrentWramBank = 1;
 
         // Connects the RAM to the Emulator
         void connectRAM(Emulator* emu);

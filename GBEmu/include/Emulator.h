@@ -59,6 +59,9 @@ namespace GBEmu
         void stopCPU();
         void InitializeEmu();
         std::thread cpu_thread;
+
         void ClockCycle(int cpu_cycles);
+        //Double Speed Mode 
+        bool DoubleSpeed;
     };
 }

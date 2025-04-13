@@ -42,8 +42,11 @@ namespace GBEmu
 
         }oam;
         
-        u8 VRAM[0x2000];
+        // Switchable VRAM
+        u8 VRAM[0x4000]; 
         
+        // 0 on DMG, 1-0 on CGB
+        u8 CurrentVRAMBank = 0;
 
         struct
         {

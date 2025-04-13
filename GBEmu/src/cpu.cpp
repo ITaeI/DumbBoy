@@ -106,6 +106,8 @@ namespace GBEmu
 
     void cpu::init()
     {
+        // Will Need to change For CGB Hardware upgrade
+        // in which A Reg = 11 
         reg.af.write(0x0180);
         reg.bc.write(0x0013);
         reg.de.write(0x00D8);
@@ -1902,7 +1904,11 @@ namespace GBEmu
 
     void cpu::STOP()
     {
-        // Nothing
+        if(SwitchArmed)
+        {
+            Emu->DoubleSpeed = !Emu->DoubleSpeed;
+            SwitchArmed = false;
+        }
     }
 
     void cpu::DI()

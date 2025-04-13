@@ -12,18 +12,33 @@ namespace GBEmu
     void RAM::init()
     {
         memset(wram, 0, sizeof(wram));
+        memset(wramBanks,0,sizeof(wramBanks));
         memset(hram, 0, sizeof(hram));
+        CurrentWramBank = 1;
     }
 
     u8 RAM::read_wram(u16 adress)
     {
-        return wram[adress - 0xC000];
+        if(adress-0xC000 < 0x1000)
+        {
+            return wram[adress - 0xC000];
+        }
+        else
+        {
+            return wramBanks[adress - 0xD000 + (CurrentWramBank * 0x1000)];
+        }
     }
 
     void RAM::write_wram(u16 adress, u8 data)
     {
-        wram[adress - 0xC000] = data;
-        
+        if(adress-0xC000 < 0x1000)
+        {
+            wram[adress - 0xC000] = data;
+        }
+        else
+        {
+           wramBanks[adress - 0xD000 + (CurrentWramBank * 0x1000)] = data;
+        }
     }
 
     u8 RAM::read_hram(u16 adress)

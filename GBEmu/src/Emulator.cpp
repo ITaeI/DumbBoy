@@ -27,6 +27,8 @@ namespace GBEmu
         dma.connectDMA(this);
         joypad.connectJoypad(this);
         apu.connectAPU(this);
+
+        DoubleSpeed = false;
     }
 
     Emulator::~Emulator()
@@ -137,10 +139,31 @@ namespace GBEmu
             {
                 ticks++;
                 timer.timer_tick();
-                ppu.tick();
+                if(DoubleSpeed && (4-j)%2)
+                {
+                    ppu.tick();
+                }
+                else
+                {
+                    ppu.tick();
+                }
             }
 
-            if(ticks >= 4194304)
+
+            int Wait = 0;
+            int OneSecond;
+            if(DoubleSpeed)
+            {
+                Wait = 524;
+                OneSecond = 4194304/2;
+            }
+            else
+            {
+                Wait = 1048;
+                OneSecond = 4194304;
+            }
+
+            if(ticks >= OneSecond)
             {
                 cartridge.ClockTick();
                 ticks = 0;
@@ -148,7 +171,7 @@ namespace GBEmu
             
             // This Will Slow Down the CPU thread to (Closely match GB Hardware)
             static thread_local auto LastCycle = std::chrono::steady_clock::now();
-            auto target = LastCycle + std::chrono::nanoseconds(950);
+            auto target = LastCycle + std::chrono::nanoseconds(Wait);
             std::this_thread::sleep_until(target);
             auto now = std::chrono::steady_clock::now();
             if(now  > (target + std::chrono::milliseconds(10)))
