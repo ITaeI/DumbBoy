@@ -105,19 +105,19 @@ namespace GBEmu
                     switch (currentRTCReg)
                     {
                     case 0x08:
-                        return RTCLatched.s;
+                        return 0b11000000 | RTCLatched.s;
                         break;
                     case 0x09:
-                        return RTCLatched.m;
+                        return 0b11000000 | RTCLatched.m;
                         break;
                     case 0x0A:
-                        return RTCLatched.h;
+                        return 0b11100000 | RTCLatched.h;
                         break;
                     case 0x0B:
                         return RTCLatched.DL;
                         break;
                     case 0x0C:
-                        return RTCLatched.DH;
+                        return 0b00111110 | RTCLatched.DH;
                         break;
 
                     
@@ -131,7 +131,7 @@ namespace GBEmu
                     {
                         return 0xFF;
                     }
-                    return ram_Banks[addr - 0xA000 + (current_ram_bank * 0x2000)];
+                    return ram_Banks[(addr - 0xA000) + (current_ram_bank * 0x2000)];
                 }
             }
         }
@@ -306,8 +306,6 @@ namespace GBEmu
             else if (addr <= 0x7FFF)
             {
 
-                static u8 prevInput = data;
-
                 // if the input of 0x00 is followed by a 0x01
                 if(prevInput == 0x00 and data == 0x01)
                 {
@@ -324,19 +322,24 @@ namespace GBEmu
                     switch (currentRTCReg)
                     {
                     case 0x08:
+                        RTCLatched.s = data & 0b00111111;
                         RTC.s = data & 0b00111111;
                         Emu->ticks = 0; // resets sub second counter
                         break;
                     case 0x09:
+                        RTCLatched.m = data & 0b00111111;
                         RTC.m = data & 0b00111111;
                         break;
                     case 0x0A:
+                        RTCLatched.h = data & 0b00011111;
                         RTC.h = data & 0b00011111;
                         break;
                     case 0x0B:
+                        RTCLatched.DL = data;
                         RTC.DL = data;
                         break;
                     case 0x0C:
+                        RTCLatched.DH = data & 0b11000001;
                         RTC.DH = data & 0b11000001;
                         break;
 
@@ -466,11 +469,11 @@ namespace GBEmu
 
         // For MBC3
         memset(&RTC,0,sizeof(RTC));
-        memset(&RTCLatched,0,sizeof(RTC));
+        memset(&RTCLatched,0,sizeof(RTCLatched));
         isClockRegisterMapped = false;
         latchOccured = false;
+        prevInput = 0x10; // arbitrary starting value
 
-        // Note in the future Will need to initalize RAM banks and Clock Registers from save files
     }
 
     void cart::CalculateZeroBank()
@@ -513,11 +516,11 @@ namespace GBEmu
     void cart::ClockTick()
     {
         RTC.s++;
-        if(RTC.s = 60)
+        if(RTC.s == 60)
         {
             RTC.s = 0;
             RTC.m++;
-            if(RTC.m = 60)
+            if(RTC.m == 60)
             {
                 RTC.m = 0;
                 RTC.h++;
@@ -542,6 +545,7 @@ namespace GBEmu
         // Thus check for it BATTERY in the ROM Type name
         if (!cartridgeLoaded)
         {
+            std::cout << "No Save Necessary" << std::endl;
             return;
         }
 
@@ -553,14 +557,40 @@ namespace GBEmu
             size_t extensionPos = savePath.find_last_of('.'); //Grabs last occurence of Extension ID
             
             savePath = "../../GBEmu/Saves/" + savePath.substr(0,extensionPos) + ".sav";
-            std::ofstream saveFile(savePath);
+            std::ofstream saveFile;
             
+            saveFile.open(savePath, std::ios::binary);
+
             if(!saveFile.is_open())
             {
+                std::cout << "Unable to save file" << std::endl;
                 return;
             }
 
             saveFile.write(reinterpret_cast<char*>(ram_Banks), sizeof(ram_Banks));
+            saveFile.close();
+        }
+
+        if(getRomTypeName(header->cart_type).find("TIMER") != std::string::npos)
+        {
+            // Grab the name of the ROM
+            std::string savePath = cart_filename;
+            // Replace the .gb extension with .sav
+            size_t extensionPos = savePath.find_last_of('.'); //Grabs last occurence of Extension ID
+            
+            savePath = "../../GBEmu/Saves/" + savePath.substr(0,extensionPos) + ".rtc";
+            std::ofstream saveFile;
+            
+            saveFile.open(savePath, std::ios::binary);
+
+            if(!saveFile.is_open())
+            {
+                std::cout << "Unable to save file" << std::endl;
+                return;
+            }
+
+            saveFile.write(reinterpret_cast<char*>(&RTC), sizeof(RTC));
+            saveFile.write(reinterpret_cast<char*>(&RTCLatched), sizeof(RTCLatched));
             saveFile.close();
         }
     }
@@ -578,7 +608,9 @@ namespace GBEmu
             
             savePath = "../../GBEmu/Saves/" + savePath.substr(0,extensionPos) + ".sav"; 
 
-            std::ifstream saveFile(savePath);
+            std::ifstream saveFile;
+
+            saveFile.open(savePath, std::ios::binary);
 
             if(!saveFile.is_open())
             {
@@ -587,6 +619,30 @@ namespace GBEmu
             }
 
             saveFile.read(reinterpret_cast<char*>(ram_Banks), sizeof(ram_Banks));
+            saveFile.close();
+        }
+
+        if(getRomTypeName(header->cart_type).find("TIMER") != std::string::npos)
+        {
+            // Grab the name of the ROM
+            std::string savePath = cart_filename;
+            // Replace the .gb extension with .sav
+            size_t extensionPos = savePath.find_last_of('.'); //Grabs last occurence of Extension ID
+            
+            savePath = "../../GBEmu/Saves/" + savePath.substr(0,extensionPos) + ".rtc"; 
+
+            std::ifstream saveFile;
+
+            saveFile.open(savePath, std::ios::binary);
+
+            if(!saveFile.is_open())
+            {
+                std::cout << "Failed To load Clock" << std::endl;
+                return;
+            }
+
+            saveFile.read(reinterpret_cast<char*>(&RTC), sizeof(RTC));
+            saveFile.read(reinterpret_cast<char*>(&RTCLatched), sizeof(RTCLatched));
             saveFile.close();
         }
     }

@@ -2,7 +2,10 @@
 #include "Screen.h"
 #include "Emulator.h"
 #include <thread>
+
+#ifdef _WIN32
 #include <Windows.h>
+#endif
 
 namespace GBEmu
 {
@@ -67,8 +70,6 @@ namespace GBEmu
     void Screen::Update()
     {
 
-        Uint64 start = SDL_GetTicks();
-
         ImGui_ImplSDLRenderer3_NewFrame();
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
@@ -98,12 +99,7 @@ namespace GBEmu
         ImGui_ImplSDLRenderer3_RenderDrawData (ImGui::GetDrawData(), renderer);
         SDL_RenderPresent(renderer);
 
-
         pollForEvents();
-
-        Uint64 ElapsedTime = SDL_GetTicks() - start;
-        if (ElapsedTime < 1000/TargetFPS)
-            SDL_Delay( (1000/TargetFPS) - (SDL_GetTicks() - start) ); 
     }
 
     void Screen::renderMainWindow()
@@ -145,6 +141,7 @@ namespace GBEmu
                     }
                     else if(ImGui::MenuItem("Load Rom"))
                     {
+                        ScanForRoms(Emu->cartridge.CurrentDir);
                         LoadRom = !LoadRom;
                     }
                     else if(ImGui::MenuItem("Run"))
@@ -185,12 +182,10 @@ namespace GBEmu
             }
             
         }
-
-        
+ 
         dockID = ImGui::GetID("DockSpace");
         ImGui::DockSpace(dockID, ImVec2(0.0f,0.0f), ImGuiDockNodeFlags_None);
         ImGui::End();
-
 
     }
 
@@ -208,21 +203,42 @@ namespace GBEmu
 
     void Screen::renderGBScreen()
     {
-        for(int y = 0; y < 144; y++)
+        if(Emu->ppu.FrameLoaded)
         {
-            for(int x = 0; x< 160; x++)
+            static auto LastFrame = std::chrono::steady_clock::now();
+
+            for(int y = 0; y < 144; y++)
             {
-                DrawPixel(x,y,Emu->ppu.ScreenBuffer[y*160 + x]);
+                for(int x = 0; x< 160; x++)
+                {
+                    DrawPixel(x,y,Emu->ppu.ScreenBuffer[y*160 + x]);
+                }
             }
+    
+            // Set Render target to texture
+            SDL_SetRenderTarget(renderer, LCDTexture);
+    
+            //Update texture with surface
+            SDL_UpdateTexture(LCDTexture, NULL, LCDSurface->pixels, LCDSurface->pitch);
+    
+            SDL_SetRenderTarget(renderer, NULL);
+
+            // Notify the CPU/PPU Thread that The frame was consumed
+            {           
+                std::unique_lock<std::mutex> lock(Emu->ppu.mtx);
+                Emu->ppu.FrameLoaded = false;
+                Emu->ppu.cv.notify_one();
+            }
+
+            std::this_thread::sleep_until(LastFrame + std::chrono::microseconds(16000));
+            auto CurrentFrame = std::chrono::steady_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(CurrentFrame- LastFrame).count();
+
+            if(elapsed != 0)
+                FPS = 1000.0f / elapsed;
+            LastFrame = CurrentFrame;
+
         }
-
-        // Set Render target to texture
-        SDL_SetRenderTarget(renderer, LCDTexture);
-
-        //Update texture with surface
-        SDL_UpdateTexture(LCDTexture, NULL, LCDSurface->pixels, LCDSurface->pitch);
-
-        SDL_SetRenderTarget(renderer, NULL);
 
         
         ImGui::SetNextWindowDockID(dockID, ImGuiCond_FirstUseEver);
@@ -234,6 +250,11 @@ namespace GBEmu
             
             CenterTexture(WindowSize);
             ImGui::Image((ImTextureID)LCDTexture, WindowSize); 
+            if(ShowFPS)
+            {
+                ImGui::SameLine();
+                ImGui::Text(std::to_string(FPS).c_str());
+            }
             
         }
         ImGui::End();
@@ -246,11 +267,13 @@ namespace GBEmu
         if(ImGui::Begin("Registers", nullptr, ImGuiWindowFlags_NoCollapse))
         {
 
-            ImGui::Checkbox("Cpu Registers", &showCpuRegs);
+            ImGui::Checkbox("CPU", &showCpuRegs);
             ImGui::SameLine();
-            ImGui::Checkbox("LCD Registers", &showLcdRegs);
+            ImGui::Checkbox("LCD", &showLcdRegs);
             ImGui::SameLine();
-            ImGui::Checkbox("Timer Registers", &showTimerRegs);
+            ImGui::Checkbox("Timer", &showTimerRegs);
+            ImGui::SameLine();
+            ImGui::Checkbox("APU", &showAPURegs);
 
             ImGui::Separator();
             if(showCpuRegs)
@@ -443,6 +466,160 @@ namespace GBEmu
     
                     ImGui::TableSetColumnIndex(3);
                     ImGui::Text("[ 0x%02X ]", Emu->timer.timerRegs.TAC.read());
+
+    
+                }
+                ImGui::EndTable();
+            }
+
+            if(showAPURegs)
+            {
+                if(ImGui::BeginTable("Timer Registers", 4, ImGuiTableFlags_None))
+                {
+                    ImGui::TableSetupColumn("APU Registers", ImGuiTableColumnFlags_NoResize);
+                    ImGui::TableSetupColumn("##Value 1", ImGuiTableColumnFlags_NoResize);
+                    ImGui::TableSetupColumn("##Regs 2", ImGuiTableColumnFlags_NoResize);
+                    ImGui::TableSetupColumn("##Value 2", ImGuiTableColumnFlags_NoResize);
+    
+                    ImGui::TableHeadersRow();
+    
+    
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("NR10");
+    
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("[ 0x%02X ]", Emu->apu.Ch1.NR10.Raw);
+    
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("NR11");
+    
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("[ 0x%02X ]", Emu->apu.Ch1.NR11.Raw);
+    
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("NR12");
+    
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("[ 0x%02X ]", Emu->apu.Ch1.NR12.Raw);
+    
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("NR13");
+    
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("[ 0x%02X ]", Emu->apu.Ch1.NR13);
+
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("NR14");
+    
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("[ 0x%02X ]", Emu->apu.Ch1.NR14.Raw);
+
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("NR21");
+    
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("[ 0x%02X ]", Emu->apu.Ch2.NR21.Raw);
+
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("NR22");
+    
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("[ 0x%02X ]", Emu->apu.Ch2.NR22.Raw);
+
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("NR23");
+    
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("[ 0x%02X ]", Emu->apu.Ch2.NR23);
+
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("NR24");
+    
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("[ 0x%02X ]", Emu->apu.Ch2.NR24.Raw);
+
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("NR30");
+    
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("[ 0x%02X ]", Emu->apu.Ch3.NR30.Raw);
+
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("NR31");
+    
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("[ 0x%02X ]", Emu->apu.Ch3.NR31);
+
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("NR32");
+    
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("[ 0x%02X ]", Emu->apu.Ch3.NR32.Raw);
+
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("NR33");
+    
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("[ 0x%02X ]", Emu->apu.Ch3.NR33);
+
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("NR34");
+    
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("[ 0x%02X ]", Emu->apu.Ch3.NR34.Raw);
+
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("NR41");
+    
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("[ 0x%02X ]", Emu->apu.Ch4.NR41);
+
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("NR42");
+    
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("[ 0x%02X ]", Emu->apu.Ch4.NR42.Raw);
+
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("NR43");
+    
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("[ 0x%02X ]", Emu->apu.Ch4.NR43.Raw);
+
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("NR44");
+    
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("[ 0x%02X ]", Emu->apu.Ch4.NR44.Raw);
+
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("NR50");
+    
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("[ 0x%02X ]", Emu->apu.GlobalRegs.NR50.Raw);
+
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("NR51");
+    
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("[ 0x%02X ]", Emu->apu.GlobalRegs.SoundPanningNR51.Raw);
+
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("NR52");
+    
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("[ 0x%02X ]", Emu->apu.GlobalRegs.AudioMasterControlNR52.Raw);
 
     
                 }
@@ -672,7 +849,7 @@ namespace GBEmu
         ImVec2 avail= ImGui::GetContentRegionAvail();
         static ImVec2 IntitalCursor = ImGui::GetCursorPos();
         ImVec2 CursorPoint;
-        CursorPoint.x =  ((avail.x - TextureSize.x) / 2);// : IntitalCursor.x / 2;
+        CursorPoint.x =  ((avail.x - TextureSize.x) / 2);
 
         ImGui::SetCursorPosX(CursorPoint.x);
     }
@@ -683,7 +860,10 @@ namespace GBEmu
 
         if(ImGui::Begin("Settings", nullptr, ImGuiWindowFlags_NoCollapse))
         {
-            ImGui::InputInt("Target FPS", &TargetFPS, 5, 100, ImGuiInputTextFlags_None);
+            if(ImGui::Button("ShowFPS"))
+            {
+                ShowFPS = !ShowFPS;
+            }
         }
         ImGui::End();
     }
@@ -741,6 +921,7 @@ namespace GBEmu
             if (ImGui::InputText("##Current Rom Directory",Emu->cartridge.CurrentDir,sizeof(Emu->cartridge.CurrentDir)))
             {
                 RomList.clear();
+                ScanForRoms(Emu->cartridge.CurrentDir);
                 Emu->cartridge.CurrentRom = "";
             }
             
@@ -776,8 +957,8 @@ namespace GBEmu
                     Emu->InitializeEmu();
                     
                     GBWindowReady = false;
-                    if (Emu->cartridge.CurrentRom != "")
-                        Emu->cartridge.load(const_cast<char*>(Emu->cartridge.CurrentRom.c_str()));
+
+                    Emu->cartridge.load(const_cast<char*>(Emu->cartridge.CurrentRom.c_str()));
                     // run CPU on a separate thread
                     Emu->cpu_thread = std::thread (&Emulator::runCPU, Emu);
     
@@ -798,26 +979,44 @@ namespace GBEmu
         // Clear the Rom list to not leave "Phantom Files"
         RomList.clear();
 
-        // We only want gb games
-        std::string RomType = "*.gb";
+        // We want to look for both .gb and .gbc files
+        std::string RomTypeGB = "*.gb";
+        std::string RomTypeGBC = "*.gbc";
+
+#ifdef _WIN32
 
         WIN32_FIND_DATA findFiles;
 
-        HANDLE hFind = FindFirstFile((Dir + "\\" + RomType).c_str(), &findFiles);
-
-        if (hFind == INVALID_HANDLE_VALUE) {
-            std::cerr << "Error opening directory or no files found." << std::endl;
-            return;
-        }
-    
-        do {
-            // Skip "." and ".." entries (current and parent directories)
-            if (findFiles.cFileName[0] != '.') {
+        // Search for .gb files
+        HANDLE hFindGB = FindFirstFile((Dir + "\\" + RomTypeGB).c_str(), &findFiles);
+        if (hFindGB != INVALID_HANDLE_VALUE) {
+            do 
+            {
+                if (findFiles.cFileName[0] != '.') 
+                {
                 RomList.emplace_back(findFiles.cFileName);
-            }
-        } while (FindNextFile(hFind, &findFiles) != 0);
-    
-        FindClose(hFind);
+                }
+
+            } while (FindNextFile(hFindGB, &findFiles) != 0);
+            FindClose(hFindGB);
+        }
+
+        // Search for .gbc files
+        HANDLE hFindGBC = FindFirstFile((Dir + "\\" + RomTypeGBC).c_str(), &findFiles);
+        if (hFindGBC != INVALID_HANDLE_VALUE) {
+            do 
+            {
+                if (findFiles.cFileName[0] != '.') 
+                {
+                    RomList.emplace_back(findFiles.cFileName);
+                }
+
+            } while (FindNextFile(hFindGBC, &findFiles) != 0);
+            FindClose(hFindGBC);
+
+        }
+#endif
+
     }
 
     void Screen::pollForEvents()

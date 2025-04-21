@@ -133,7 +133,8 @@ namespace GBEmu
         // Settings Screen
         void renderSettings();
         bool ViewSettings  = false;
-        int TargetFPS = 60;
+        bool ShowFPS = false;
+        float FPS = 0;
 
         //  
         void renderRegistersWindow();
@@ -141,6 +142,7 @@ namespace GBEmu
         bool showCpuRegs = false;
         bool showLcdRegs = false;
         bool showTimerRegs = false;
+        bool showAPURegs = false;
 
         // Render Tiles
         bool ViewTiles = false;
@@ -168,9 +170,9 @@ namespace GBEmu
         // GB colors
 
         // Grays
-        //const Uint32 colors[4] = {0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000};
+        const Uint32 colors[4] = {0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000};
         // Original Green
-        const Uint32 colors[4] = { 0xFF9BBC0F, 0xFF8BAC0F, 0xFF306230, 0xFF0F380F };
+        //const Uint32 colors[4] = { 0xFF9BBC0F, 0xFF8BAC0F, 0xFF306230, 0xFF0F380F };
 
         // Aspect Ratio Calculation
         ImVec2 CalculateImageSize(float W, float H);

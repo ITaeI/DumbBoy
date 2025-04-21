@@ -2,6 +2,9 @@
 #include "common.h"
 #include "registers.h"
 #include <array>
+#include <atomic>
+#include <mutex>
+#include <condition_variable>
 
 
 namespace GBEmu
@@ -142,6 +145,9 @@ namespace GBEmu
         void PushPixelToLCD(u8 currentX);
         
         u8 ScreenBuffer[0x5A00];
+        std::atomic<bool> FrameLoaded = false;
+        std::mutex mtx;
+        std::condition_variable cv;
     };
 
 }

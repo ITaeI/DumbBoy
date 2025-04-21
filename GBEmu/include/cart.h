@@ -22,8 +22,8 @@ namespace GBEmu
 
         ~cart()
         {
-            if(cartridgeLoaded)
-                save();
+
+            save();
             std::cout << "Freeing Rom Data" << std::endl;
             freeRomData();
         
@@ -82,6 +82,7 @@ namespace GBEmu
         u8 currentRTCReg;
         bool isClockRegisterMapped = false;
         bool latchOccured = false;
+        u8 prevInput;
 
 
         struct RTCRegs

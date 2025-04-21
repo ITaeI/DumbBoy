@@ -13,9 +13,20 @@ namespace GBEmu
 
     void APU::init()
     {
-        ChannelState.fill(0);
         DACState.fill(0);
-        LengthCounter.fill(0);
+        DIVAPU = 0;
+        for(int i = 0; i <16; i++)
+        {
+            waveRam[i] = InitialWaveRam[i];
+        }
+        Ch1.init();
+        Ch2.init();
+        Ch3.init();
+        Ch4.init();
+
+        GlobalRegs.NR50.Raw = 0x77;
+        GlobalRegs.SoundPanningNR51.Raw = 0xF3;
+        GlobalRegs.AudioMasterControlNR52.Raw = 0xF1;
     }
 
     u8 APU::waveFormGenerator(u8 Phase,u8 duty)
@@ -37,25 +48,197 @@ namespace GBEmu
 
     void APU::FrameSequencer()
     {
-        // Occurs Every 2 Low Frequency Clocks (DIVAPU)
-        LengthCTRClock = (DIVAPU % 2 == 0) ? true : false;
-        // Occurs Every 4 Low Frequency Clocks (DIVAPU)
-        SweepClock = (DIVAPU % 4 == 0) ? true : false;
-        // Occurs Every 8 Low Frequency Clocks (DIVAPU)
-        VolEnvelopeClock = (DIVAPU % 8 == 0) ?  true : false;
+
+        if(!GlobalRegs.AudioMasterControlNR52.OnOff)
+        {
+            return;
+        }
+
+        DIVAPU = (1+DIVAPU) % 8;
+
+        int TempVol;
+        if((LengthSequence >> DIVAPU) & 1)
+        {
+            // Length Count
+            if(Ch1.NR14.LengthEnable )
+            {
+                if(--Ch1.RemainingLength == 0)
+                {
+                    GlobalRegs.AudioMasterControlNR52.Ch1On = 0;
+
+
+                }
+            }
+
+            if(Ch2.NR24.LengthEnable)
+            {
+                if(--Ch2.RemainingLength == 0)
+                {
+                    GlobalRegs.AudioMasterControlNR52.Ch2On = 0;
+
+                }
+            } 
+
+            if(Ch3.NR34.LengthEnable)
+            {
+                if(--Ch3.RemainingLength == 0)
+                {
+                    GlobalRegs.AudioMasterControlNR52.Ch3On = 0;
+
+                }
+            }
+
+            if(Ch4.NR44.LengthEnable)
+            {
+                if(--Ch4.RemainingLength == 0)
+                {
+                    GlobalRegs.AudioMasterControlNR52.Ch4On = 0;
+
+                }
+            }
+        }
+
+        if ((EnvelopeSequence >> DIVAPU) & 1)
+        {
+            if(GlobalRegs.AudioMasterControlNR52.Ch1On && Ch1.EnvelopeEnabled)
+            {   
+                TempVol = Ch1.Volume;
+                if(--Ch1.EnvelopeTimer == 0)
+                {
+                    TempVol = Ch1.NR12.EnvDirection ? TempVol + 1 : TempVol - 1;
+                    if(TempVol  > 15 || TempVol  < 0)
+                    {
+                        Ch1.EnvelopeEnabled = false;
+                    } 
+                    else
+                    {
+                        Ch1.Volume = TempVol;
+                    }
+                }
+            }
+            if(GlobalRegs.AudioMasterControlNR52.Ch2On && Ch2.EnvelopeEnabled)
+            {
+                TempVol = Ch2.Volume;
+                if(--Ch2.EnvelopeTimer == 0)
+                {
+                    TempVol = Ch2.NR22.EnvDirection ? TempVol + 1 : TempVol - 1;
+                    if(TempVol  > 15 || TempVol  < 0)
+                    {
+                        Ch2.EnvelopeEnabled = false;
+                    }
+                    else
+                    {
+                        Ch2.Volume = TempVol;
+                    }
+                }
+            }
+
+            if(GlobalRegs.AudioMasterControlNR52.Ch4On && Ch4.EnvelopeEnabled)
+            {
+                TempVol = Ch4.Volume;
+                if(--Ch4.EnvelopeTimer == 0)
+                {
+                    TempVol = Ch4.NR42.EnvDirection ? TempVol + 1 : TempVol - 1;
+                    if(TempVol  > 15 || TempVol  < 0)
+                    {
+                        Ch4.EnvelopeEnabled = false;
+                    }
+                    else
+                    {
+                        Ch4.Volume = TempVol;
+                    }
+                }
+            }
+        }
+
+        if((FrequencySweepSequence >> DIVAPU) & 1)
+        {
+            if(Ch1.SweepEnabled)
+            {
+                Ch1.FrequencySweep();
+            }
+        }
+
+        //DIVAPU = (1+DIVAPU) % 8;
+
     }
 
-    void APU::Ch1Sweep()
+    bool APU::CheckNextFrame(u8 Sequence)
     {
-
+        if((Sequence >> ((DIVAPU + 1)%8)) & 1)
+        {
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
     }
+
+    void Channel1::FrequencySweep()
+    {
+        
+        if(--SweepTimer == 0)
+        {
+            u16 NewFrequency = FrequencyCalculation();
+
+            if (NewFrequency <= 2047)
+            {
+                Frequency = NewFrequency;
+                NR13 = NewFrequency & 0xFF;
+                NR14.Raw = (NR14.Raw & 0xF8) | (NewFrequency >> 8);
+                SweepTimer = NR10.SweepPace;
+
+                // If the first Frequency calc is within range 
+                // immdediately do the frequency calc and overflow check again
+                FrequencyCalculation();
+            }
+
+        }
+    }
+
+
+
+    u16 Channel1::FrequencyCalculation()
+    {
+        u16 NewFrequency = Frequency >> NR10.SweepStep;
+
+        if(NR10.SweepDirection)
+        {
+            NewFrequency = Frequency - NewFrequency;
+        }
+        else
+        {
+            NewFrequency = Frequency + NewFrequency;
+        }
+
+        if (NewFrequency > 2047)
+        {
+            SweepEnabled = false;
+            apu->GlobalRegs.AudioMasterControlNR52.Ch1On  = 0;
+        }
+
+        return NewFrequency;
+    }
+
     void APU::tick()
     {
+
+        Ch1.tick();
+        Ch2.tick();
+        Ch3.tick();
+        Ch4.tick();
+
+        // DAC Receives (Waveform value * Volume) from both Channel 1 and 2
+        // DAC Receives Sample from Channel 3 shifted depending on NR32 output level
+        // DAC Receives LFSR bit0 * Volume
+
 
     }
 
     u8 APU::read(u16 address)
     {
+
         switch (address)
         {
         case 0xFF10:
@@ -75,7 +258,7 @@ namespace GBEmu
             // if period overflows (over 0x7FF) the channel turns off
             // This occurs even if sweep iterations are disabled by the pace being 0.
 
-            return Channel1.NR10.Raw;
+            return  0x80 | Ch1.NR10.Raw;
             break;
         case 0xFF11:
 
@@ -90,7 +273,7 @@ namespace GBEmu
 
             // the higher the value is the shorter the time before it gets cut
 
-            return Channel1.NR11.Raw & 0xC0;
+            return 0x3F | Ch1.NR11.Raw & 0xC0;
             break;
         case 0xFF12:
             
@@ -108,7 +291,7 @@ namespace GBEmu
 
             // setting bits 3-7 to 0 will turn off DAC and channel, and cause audio pop
 
-            return Channel1.NR12.Raw;
+            return Ch1.NR12.Raw;
             break;
         case 0xFF13:
 
@@ -129,28 +312,28 @@ namespace GBEmu
             //   - Sweep does a bunch of things?
             // 6: Length Enable
             // 2-0: upper 3 bits of period
-            return Channel1.NR14.Raw & 0x40;
+            return 0xBF | Ch1.NR14.Raw & 0x40;
             break;
         case 0xFF16:
             // Channel 2 Lacks Sweep mechanics but other regs remain same as Channel 1
-            return Channel2.NR21.Raw & 0xC0;
+            return 0x3F | Ch2.NR21.Raw & 0xC0;
             break;
         case 0xFF17:
-            return Channel2.NR22.Raw;
+            return Ch2.NR22.Raw;
             break;
         case 0xFF18:
             // write only
             return 0xFF;
             break;
         case 0xFF19:
-            return Channel2.NR24.Raw & 0x40;
+            return 0xBF | Ch2.NR24.Raw & 0x40;
             break;
         case 0xFF1A:
             // Channel 3 - Wave Output
             // NR30 - Channel 3 DAC Enable
 
             // 7: Dac on/off  - turns off the channel as well
-            return Channel3.NR30.Raw;
+            return 0x7F | Ch3.NR30.Raw;
             break;
         case 0xFF1B:
             // Length timer Write only
@@ -164,7 +347,7 @@ namespace GBEmu
             // - 0b01 (100% sound) uses wave ram samples as is
             // - 0b10 (50% sound) uses shifted wave ram samples (shifts to the right once)
             // - 0b11 (50% sound) uses shifted wave ram samples (shifts to the right twice)
-            return Channel3.NR32.Raw;
+            return 0x9F | Ch3.NR32.Raw;
             break;
         case 0xFF1D:
             // same as channels 1-2 NR33
@@ -175,7 +358,7 @@ namespace GBEmu
             // same as channels 1-2
             // except no envelope functionality
             // instead resets wave ram index
-            return Channel3.NR34.Raw & 0x40;
+            return 0xBF | Ch3.NR34.Raw & 0x40;
             break;
         case 0xFF20:
             // Channel 4 - Noise
@@ -188,7 +371,7 @@ namespace GBEmu
         case 0xFF21:
             // volume and envelope - NR42
             // same as NR12
-            return Channel4.NR42.Raw;
+            return Ch4.NR42.Raw;
             break;
         case 0xFF22:
             // Frequency and randomness - NR43
@@ -201,7 +384,7 @@ namespace GBEmu
             // The frequency the LFSR is clocked at
             // 262144/ (clock divider * (2^shift))
             // if clock divider = 0 it uses 0.5 instead
-            return Channel4.NR43.Raw;
+            return Ch4.NR43.Raw;
             break;
         case 0xFF23:
             // Control - NR44
@@ -210,7 +393,7 @@ namespace GBEmu
             // - Envelope timer is reset.
             // - Volume is set to contents of NR42 initial volume.
             // - LFSR bits are reset.
-            return Channel4.NR44.Raw & 0x40;
+            return 0xBF | Ch4.NR44.Raw & 0x40;
             break;
         case 0xFF24:
             // Master Volume and VIN Panning
@@ -230,100 +413,579 @@ namespace GBEmu
             // Audio Master Control - NR52
             // 7: Audio Master control on/off 
             // 0-3: Ch 1-4 on?
-            return GlobalRegs.AudioMasterControlNR52.Raw;
+            return 0x70 | GlobalRegs.AudioMasterControlNR52.Raw;
         default:
-            return waveRam[address - 0xFF30];
             break;
         }
+
+
+        return 0xFF;
+
     }
     void APU::write(u16 address, u8 data)
     {   
         // When APU is not turned on only NR52 is writeable
         if(address == 0xFF26)
         {
-            GlobalRegs.AudioMasterControlNR52.Raw = (GlobalRegs.AudioMasterControlNR52.Raw & 0x7F) | (data & 0x80);
+            GlobalRegs.AudioMasterControlNR52.OnOff = data >> 7;
+            if(!GlobalRegs.AudioMasterControlNR52.OnOff) // Turn APU OFF
+            {
+
+                Ch1.init();
+                Ch2.init();
+                Ch3.init();
+                Ch4.init();
+
+                GlobalRegs.NR50.Raw = 0x00;
+                GlobalRegs.SoundPanningNR51.Raw = 0x00;
+            }
+            else // Turn APU ON
+            {
+                DIVAPU = 7;
+                Ch1.Phase = 0;
+                Ch2.Phase = 0;
+                Ch3.Phase = 0;
+                Ch4.Phase = 0;
+
+            }
             return;
         }
         else if (!(GlobalRegs.AudioMasterControlNR52.OnOff))
         {
+            // Even when off the Length Timers can be written to
+            if(address == 0xFF11)
+            {
+                Ch1.NR11.Raw = data;
+                Ch1.RemainingLength =  64 - (data & 0x3F);
+            }
+            else if(address == 0xFF16)
+            {
+                Ch2.NR21.Raw = data;
+                Ch2.RemainingLength = 64 - (data & 0x3F);
+            }
+            else if(address == 0xFF1B)
+            {
+                Ch3.NR31 = data;
+                Ch3.RemainingLength = 256 - data;
+            }
+            else if(address == 0xFF20)
+            {
+                Ch4.NR41 = data;
+                Ch4.RemainingLength =  64 - (data & 0x3F);
+            }
+            else
             return;
         }
 
         switch (address)
         {
         case 0xFF10:
-            Channel1.NR10.Raw = data;
+            Ch1.NR10.Raw = data;
             break;
         case 0xFF11:
-            // Bits 7 and 6 are Channel1's wave duty
+            // Bits 7 and 6 are Ch1's wave duty
             // Bits 5-0 are initial length timer
 
-            Channel1.NR11.InitialTimerLength = 64 - (data & 0x3F);
-            Channel1.NR11.Duty = data >> 6;
+            Ch1.NR11.Raw = data;
+
+            Ch1.RemainingLength =  64 - (data & 0x3F);
             break;
         case 0xFF12:
-            Channel1.NR12.Raw = data;
+            Ch1.NR12.Raw = data;
+            if ((data & 0xF8) !=0)
+            {
+                DACState[0] = 1;
+            }
+            else
+            {
+                DACState[0] = 0;
+                GlobalRegs.AudioMasterControlNR52.Ch1On = 0;
+            }
             break;
         case 0xFF13:
-            Channel1.NR13 = data;
+            Ch1.NR13 = data;
             break;
         case 0xFF14:
-            Channel1.NR14.Raw = data;
+            Ch1.LengthPrevEnabled = Ch1.NR14.LengthEnable;
+            Ch1.NR14.Raw = data;
 
-            if(data & (1<<7))
+            if(Ch1.NR14.LengthEnable && ! Ch1.LengthPrevEnabled)
             {
+                if(!CheckNextFrame(LengthSequence))
+                {
+                    if(Ch1.RemainingLength == 0)
+                    {
+                        
+                    }
+                    else if(--Ch1.RemainingLength == 0 && !Ch1.NR14.Trigger)
+                    {
+                        GlobalRegs.AudioMasterControlNR52.Ch1On = 0;
+                    }
+                }
+            }
 
+            // Channel 1 Trigger Event
+            if (Ch1.NR14.Trigger)
+            {
+                Ch1.trigger();
             }
             break;
         case 0xFF16:
             // same as channel 1 but for channel 2
-
+            Ch2.NR21.Raw = data;
+            Ch2.RemainingLength = 64 - (data & 0x3F);
             break;
         case 0xFF17:
+            Ch2.NR22.Raw = data;
+            if ((data & 0xF8) !=0)
+            {
+                DACState[1] = 1;
+            }
+            else
+            {
+                DACState[1] = 0;
+                GlobalRegs.AudioMasterControlNR52.Ch2On = 0;
+            }
             break;
         case 0xFF18:
+            Ch2.NR23 = data;
             break;
         case 0xFF19:
-            if(data & (1<<7))
+            Ch2.LengthPrevEnabled = Ch2.NR24.LengthEnable;
+            Ch2.NR24.Raw = data;
+
+            if(Ch2.NR24.LengthEnable && ! Ch2.LengthPrevEnabled)
             {
-                // Trigger Channel 2
+                if(!CheckNextFrame(LengthSequence))
+                {
+                    if(Ch2.RemainingLength == 0)
+                    {
+                        
+                    }
+                    else if(--Ch2.RemainingLength == 0 && !Ch2.NR24.Trigger)
+                    {
+                        GlobalRegs.AudioMasterControlNR52.Ch2On = 0;
+                    }
+                }
+            }
+            // Channel 1 Trigger Event
+            if (Ch2.NR24.Trigger)
+            {
+                Ch2.trigger();
             }
             break;
         case 0xFF1A:
+            Ch3.NR30.Raw = data;
+            if(Ch3.NR30.DACOnOff)
+            {
+                DACState[2] = 1;
+            }
+            else
+            {
+                DACState[2] = 0;
+                GlobalRegs.AudioMasterControlNR52.Ch3On = 0;
+            }
             break;
         case 0xFF1B:
             // for wave channel Initial length timer 256-0
+            Ch3.NR31 = data;
+            Ch3.RemainingLength = 256 - data;
 
             break;
         case 0xFF1C:
+            Ch3.NR32.Raw = data;
             break;
         case 0xFF1D:
+            Ch3.NR33 = data;
             break;
         case 0xFF1E:
-            if(data & (1<<7))
+            Ch3.LengthPrevEnabled = Ch3.NR34.LengthEnable;
+            Ch3.NR34.Raw = data;
+
+            if(Ch3.NR34.LengthEnable && ! Ch3.LengthPrevEnabled)
             {
-                // Trigger Channel 3
+                if(!CheckNextFrame(LengthSequence))
+                {
+                    if(Ch3.RemainingLength == 0)
+                    {
+                        
+                    }
+                    else if(--Ch3.RemainingLength == 0 && !Ch3.NR34.Trigger)
+                    {
+                        GlobalRegs.AudioMasterControlNR52.Ch3On = 0;
+                    }
+                }
+            }
+
+            if(Ch3.NR34.Trigger)
+            {
+                Ch3.trigger();
             }
             break;
         case 0xFF20:
+            Ch4.NR41 = data;
+            Ch4.RemainingLength =  64 - (data & 0x3F);
             break;
         case 0xFF21:
+            Ch4.NR42.Raw = data;
+            if ((data & 0xF8) !=0)
+            {
+                DACState[3] = 1;
+            }
+            else
+            {
+                DACState[3] = 0;
+                GlobalRegs.AudioMasterControlNR52.Ch4On = 0;
+            }
             break;
         case 0xFF22:
+            Ch4.NR43.Raw = data;
             break;
         case 0xFF23:
-            if(data & (1<<7))
+            Ch4.LengthPrevEnabled = Ch4.NR44.LengthEnable;
+            Ch4.NR44.Raw = data;
+
+            if(Ch4.NR44.LengthEnable && ! Ch4.LengthPrevEnabled)
             {
-                // Trigger Channel 4
+                if(!CheckNextFrame(LengthSequence))
+                {
+                    if(Ch4.RemainingLength == 0)
+                    {
+                        
+                    }
+                    else if(--Ch4.RemainingLength == 0 && !Ch4.NR44.Trigger)
+                    {
+                        GlobalRegs.AudioMasterControlNR52.Ch4On = 0;
+                    }
+                }
+            }
+
+            if(Ch4.NR44.Trigger)
+            {
+                Ch4.trigger();
             }
             break;
         case 0xFF24:
+            GlobalRegs.NR50.Raw = data;
             break;
         case 0xFF25:
+            GlobalRegs.SoundPanningNR51.Raw = data;
             break;
         default:
-            waveRam[address - 0xFF30] = data;
             break;
+        }
+    }
+
+
+    void Channel1::init()
+    {
+        NR10.Raw = 0x00;
+        NR11.Raw = 0x00;
+        NR12.Raw = 0x00;
+        NR13 = 0x00;
+        NR14.Raw = 0x00;
+
+        apu->GlobalRegs.AudioMasterControlNR52.Ch1On = 0;
+        
+        Frequency = 0;
+        FrequencyTimer = 0;
+        //RemainingLength = 0;
+        EnvelopeEnabled = false;
+        EnvelopeTimer = 0;
+        Volume = 0;
+        SweepTimer = 0;
+
+
+        Phase = 0;
+        DutyPhaseTimer = 0;
+    }
+
+
+    void Channel1::trigger()
+    {
+        // Enable Channel 1
+        if(apu->DACState[0])
+            apu->GlobalRegs.AudioMasterControlNR52.Ch1On = 1;
+        // Reset Length Timer if expired
+        if(RemainingLength == 0)
+        {
+            RemainingLength = 64;
+            if(!apu->CheckNextFrame(apu->LengthSequence) && NR14.LengthEnable)
+            {
+                RemainingLength--;
+            }
+        }
+        // Set Period Divider?? Same as Frequency shadow reg
+
+        // Envelope timer is reset
+        // if next frame sequence will clock the envelope the evelope timer is +1 the actual
+        if(apu->CheckNextFrame(apu->EnvelopeSequence))
+        {
+            EnvelopeTimer = NR12.EnvPace + 1;
+        }
+        else
+        {
+            EnvelopeTimer = NR12.EnvPace;
+        }
+
+        //Volume is set
+        Volume = NR12.InitialVolume;
+        // Envelope is Reanabled
+        EnvelopeEnabled = true;
+        
+        /******************Sweep Related Trigger Events****************************/
+        // Reload Frequency Shadow Reg with period/Frequency
+        Frequency = NR14.UpperPeriod << 8 | NR13;
+        // Reset SweepTimer
+        SweepTimer = NR10.SweepPace;
+        // Set enable flag on certain conditions
+        if(NR10.SweepPace != 0 || NR10.SweepStep != 0)
+        {
+            SweepEnabled = true;
+        }
+        else
+        {
+            SweepEnabled = false;
+        }
+        
+        if(NR10.SweepStep != 0)
+        {
+            FrequencyCalculation();
+        }
+
+        // Reload Frequency Timer
+        FrequencyTimer = ((2048 - Frequency) * 4) & 0xFC;
+
+    }
+
+    void Channel1::tick()
+    {   
+        if(!apu->GlobalRegs.AudioMasterControlNR52.Ch1On)
+        {
+            return;
+        }
+        if(--FrequencyTimer == 0)
+        {
+            FrequencyTimer = (2048 - Frequency) *4;
+            Phase = (Phase + 1) & 8;
+        }
+    }
+
+    void Channel2::init()
+    {
+        NR21.Raw = 0x00;
+        NR22.Raw = 0x0;
+        NR23 = 0x00;
+        NR24.Raw = 0x00;
+        
+        apu->GlobalRegs.AudioMasterControlNR52.Ch2On = 0;
+
+        Frequency = 0;
+        FrequencyTimer = 0;
+        //RemainingLength = 0;
+        EnvelopeEnabled = false;
+        EnvelopeTimer = 0;
+        Volume = 0;
+
+        Phase = 0;
+        DutyPhaseTimer = 0;
+    }
+
+    void Channel2::trigger()
+    {
+        // Enable Channel 1
+        if(apu->DACState[1])
+            apu->GlobalRegs.AudioMasterControlNR52.Ch2On = 1;
+        // Reset Length Timer if expired
+        if(RemainingLength == 0)
+        {
+            RemainingLength = 64;
+            if(!apu->CheckNextFrame(apu->LengthSequence) && NR24.LengthEnable)
+            {
+                RemainingLength--;
+            }
+        }
+
+        // Set Period Divider?? Same as Frequency shadow reg
+        Frequency = NR24.UpperPeriod << 8 | NR23;
+        FrequencyTimer = ((2048 - Frequency) * 4) & 0xFC;
+        // Envelope timer is reset
+        // if next frame sequence will clock the envelope the evelope timer is +1 the actual
+        if(apu->CheckNextFrame(apu->EnvelopeSequence))
+        {
+            EnvelopeTimer = NR22.EnvPace + 1;
+        }
+        else
+        {
+            EnvelopeTimer = NR22.EnvPace;
+        }
+        //Volume is set
+        Volume = NR22.InitialVolume;
+        // Envelope is Reanabled
+        EnvelopeEnabled = true;
+
+
+    }
+
+    void Channel2::tick()
+    {
+        if(!apu->GlobalRegs.AudioMasterControlNR52.Ch2On)
+        {
+            return;
+        }
+        if(--FrequencyTimer == 0)
+        {
+            FrequencyTimer = (2048 - Frequency) *4;
+            Phase = (Phase + 1) & 8;
+        }
+    }
+
+    void Channel3::init()
+    {
+        NR30.Raw = 0x00;
+        NR31 = 0x00;
+        NR32.Raw = 0x00;
+        NR33 = 0x00;
+        NR34.Raw = 0x00;
+
+        apu->GlobalRegs.AudioMasterControlNR52.Ch3On = 0;
+        
+        Frequency = 0;
+        FrequencyTimer = 0;
+        //RemainingLength = 0;
+        EnvelopeEnabled = false;
+        Volume = 0;
+
+        SampleBuffer = 0;
+        WaveIndex = 0;
+
+        Phase = 0;
+        DutyPhaseTimer = 0;
+    }
+
+    void Channel3::trigger()
+    {
+        // Ch3 is enabled.
+        if(apu->DACState[2])
+            apu->GlobalRegs.AudioMasterControlNR52.Ch3On = 1;
+        // If the length timer expired it is reset.
+        if(RemainingLength == 0)
+        {
+            RemainingLength = 256;
+            if(!apu->CheckNextFrame(apu->LengthSequence) && NR34.LengthEnable)
+            {
+                RemainingLength--;
+            }
+        }
+        // The period divider is set to the contents of NR33 and NR34.
+        Frequency = NR34.UpperPeriod << 8 | NR33;
+        // Frequency Timer is set
+        FrequencyTimer = (2048 - Frequency) * 2;
+        // Volume is set to contents of NR32 initial volume.
+        Volume = NR32.OutputLevel;
+        // Wave RAM index is reset, but its not refilled.
+        WaveIndex = 0;
+
+
+    }
+
+    void Channel3::tick()
+    {
+        if(!apu->GlobalRegs.AudioMasterControlNR52.Ch3On)
+        {
+            return;
+        }
+
+        if(--FrequencyTimer == 0)
+        {
+            FrequencyTimer = 2 * (2048 - Frequency);
+            
+            if(WaveIndex % 2 == 1)
+            {
+                SampleBuffer = apu->waveRam[WaveIndex/2] & 0x0F;
+            }
+            else
+            {
+                SampleBuffer = (apu->waveRam[WaveIndex/2] & 0xF0 ) >> 4;
+            }
+
+            WaveIndex = (WaveIndex +1) % 32;
+        }
+    }
+
+    void Channel4::init()
+    {
+        NR41 = 0x00;
+        NR42.Raw = 0x0;
+        NR43.Raw = 0x0;
+        NR44.Raw = 0x00;
+
+        apu->GlobalRegs.AudioMasterControlNR52.Ch4On = 0;
+        
+        Frequency = 0;
+        FrequencyTimer = 0;
+        //RemainingLength = 0;
+        EnvelopeEnabled = false;
+        EnvelopeTimer = 0;
+        Volume = 0;
+
+        LFSR = 0x00;
+
+        Phase = 0;
+        DutyPhaseTimer = 0;
+    }
+
+    void Channel4::trigger()
+    {
+        // Enable Channel 4
+        if(apu->DACState[3])
+            apu->GlobalRegs.AudioMasterControlNR52.Ch4On = 1; 
+        // Reset Length Timer if expired
+        if(RemainingLength == 0)
+        {
+            RemainingLength = 64;
+            if(!apu->CheckNextFrame(apu->LengthSequence)&& NR44.LengthEnable)
+            {
+                RemainingLength--;
+            }
+        }
+
+        // Set frequency Timer
+        FrequencyTimer = 4194304/int(DivisorCodes[NR43.ClockDivider] << (NR43.ClockShift + 1));
+        // Envelope timer is reset 
+        // if next frame sequence will clock the envelope the evelope timer is +1 the actual
+        if(apu->CheckNextFrame(apu->EnvelopeSequence))
+        {
+            EnvelopeTimer = NR42.SweepPace + 1;
+        }
+        else
+        {
+            EnvelopeTimer = NR42.SweepPace;
+        }
+        //Volume is set
+        Volume = NR42.InitialVolume;
+        // Reset LFSR Bits
+        LFSR = 0xFF;
+
+
+    }
+
+    void Channel4::tick()
+    {
+        if(--FrequencyTimer == 0)
+        {
+            u8 Bit0 = LFSR & 1;
+            u8 Bit1 = (LFSR >> 1) & 1;
+
+            // shift LFSR to the right by 1 and place XOR of bit 0 and 1 in bit 15
+            LFSR = ((Bit0 ^ Bit1) << 15) | (LFSR >> 1);
+
+            // Depending on the Width, bit 7 also gets this value
+            if(NR43.LFSRWidth)
+            {
+                LFSR = ((Bit0 ^ Bit1) << 7) | (LFSR & ~(1<<7));
+            }
+            
         }
     }
 }

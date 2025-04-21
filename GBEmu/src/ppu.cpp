@@ -14,7 +14,9 @@ namespace GBEmu
     {
         // Reset For new use
         memset(VRAM, 0, 0x2000 * sizeof(u8));
-        memset(ScreenBuffer, 0, sizeof(ScreenBuffer)); // used only for debugging atm
+        memset(ScreenBuffer, 0, sizeof(ScreenBuffer));
+        FrameLoaded = true;
+
         Mode = 2;
         dots = 0;
 
@@ -60,6 +62,11 @@ namespace GBEmu
                     if (lcdRegs.LY.read() == 144) // if VBlank mode is next
                     {
                         Mode = 1;
+                        {
+                            std::unique_lock<std::mutex> lock(mtx);
+                            FrameLoaded = true;
+                        }
+
                         lcdRegs.STAT.write((lcdRegs.STAT.read() & 0xFC) | Mode);
                         Emu->processor.IF.setBit(VBlank_Int,true); // Set Vblank Interrupt flag
                         if(lcdRegs.STAT.readBit(4)) // if Mode 1 is a set as LCD interrupt condition
@@ -86,9 +93,16 @@ namespace GBEmu
                 {
                     dots -= 456;
                     lcdRegs.LY.Increment();
-
+                    // This signals the Next frame to occur
+                    // Thus Changing modes back to 2 (OAM Scan)
                     if(lcdRegs.LY.read() == 154)
                     {
+                        // Here we wait for the frame to render
+                        {
+                            std::unique_lock<std::mutex> lock(mtx);
+                            cv.wait(lock, [this]() {return !FrameLoaded || Emu->cpu_reset || Emu->exit;});
+                        }
+                        
                         Mode = 2;
                         lcdRegs.LY.write(0);
                         compare_LY_LYC();

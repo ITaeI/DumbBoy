@@ -23,10 +23,13 @@ namespace GBEmu
         timerRegs.DIV.Increment(); 
         bool falling_Edge_Check = false;
 
-        // Check Bit 4 for falling edge (If so increment DIVAPU)
-        if((div_prev & (1 << 4)) &&(!(timerRegs.DIV.read() & (1<<4))))
+
+
+        // Check Bit 12 for falling edge (If so increment DIVAPU)
+        if((div_prev & (1 << 12)) &&(!(timerRegs.DIV.read() & (1<<12))))
         {
-            Emu->apu.DIVAPU++;
+            Emu->apu.FrameSequencer();
+
         }
 
         if(TIMAOverflowOccured)

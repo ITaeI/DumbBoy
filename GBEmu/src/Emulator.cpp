@@ -80,6 +80,7 @@ namespace GBEmu
     {
         running = false;
         cpu_reset = true;
+        ppu.cv.notify_all();
         if(cpu_thread.joinable())
         {
             cpu_thread.join();
@@ -109,6 +110,9 @@ namespace GBEmu
 
         // reset Joypad
         joypad.init();
+
+        // Reset APU
+        apu.init();
     }
 
     int Emulator::run()
@@ -138,26 +142,18 @@ namespace GBEmu
                 ticks++;
                 timer.timer_tick();
                 ppu.tick();
+                apu.tick();
             }
+
+            // if((cartridge.RTC.DH >> 6) & 1)
+            // {
+            //     ticks -= 4;
+            // }
 
             if(ticks >= 4194304)
             {
                 cartridge.ClockTick();
                 ticks = 0;
-            }
-            
-            // This Will Slow Down the CPU thread to (Closely match GB Hardware)
-            static thread_local auto LastCycle = std::chrono::steady_clock::now();
-            auto target = LastCycle + std::chrono::nanoseconds(950);
-            std::this_thread::sleep_until(target);
-            auto now = std::chrono::steady_clock::now();
-            if(now  > (target + std::chrono::milliseconds(10)))
-            {
-                LastCycle = now;
-            }
-            else
-            {
-                LastCycle = target;
             }
             
             dma.tick();

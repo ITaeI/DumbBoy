@@ -29,22 +29,20 @@ namespace GBEmu
             }
             else
             {   
-                u8 temp = Emu->systemBus.read(0xFF02);
-                if(temp == 0x81)
-                {
-                    DBG.push_back((char)(Emu->systemBus.read(0xFF01)));
-                    Emu->systemBus.write(0xFF02,0x00);
-                    std::cout << "Debug Message: " << DBG << std::endl;
-                }
-    
+                // if(reg.hl.read() == 0x9860)
+                // {
+                //     Emu->debug = true;
+                // }
                 executeInstruction();
+
+
             }
         }
         else
         {
 
             Emu->ClockCycle(1);
-            if(IF.read())
+            if((IE.read() & IF.read()) != 0)
             {
                 isHalted = false;
             }
@@ -1889,7 +1887,7 @@ namespace GBEmu
         }
         else
         {
-            if((IE.read() & IF.read() & 0x1F) != 0)
+            if((IE.read() & IF.read()) != 0)
             {
                 HaltBug = true;
             }

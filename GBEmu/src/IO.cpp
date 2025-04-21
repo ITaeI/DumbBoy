@@ -40,13 +40,25 @@ namespace GBEmu
         else if (adress >= 0xFF10 && adress <= 0xFF26 )
         {
             //std::cout << "Audio" << std::endl;
-            return 0;
+            return Emu->apu.read(adress);
+            //return 0;
             //NO_IMPL
         }
         else if (adress >= 0xFF30 && adress <= 0xFF3F )
         {
             //std::cout << "Wave Pattern" << std::endl;
-            return 0;
+
+            if(!Emu->apu.GlobalRegs.AudioMasterControlNR52.Ch3On)
+            {
+                return Emu->apu.waveRam[adress - 0xFF30];
+            }
+            else
+            {
+                return Emu->apu.waveRam[Emu->apu.Ch3.WaveIndex /2];
+            }
+
+            
+            //return 0;
             //NO_IMPL
         }
         else if (adress >= 0xFF40 && adress <= 0xFF4B)
@@ -130,14 +142,19 @@ namespace GBEmu
             //std::cout << "Interrupt Flag written" << std::endl;
             Emu->processor.IF.write(data);
         }
-        else if (adress >= 0xFF26 && adress <= 0xFF10 )
+        else if (adress >= 0xFF10 && adress <= 0xFF26)
         {
             //std::cout << "Audio" << std::endl;
+            Emu->apu.write(adress,data);
             //NO_IMPL
         }
         else if (adress >= 0xFF30 && adress <= 0xFF3F )
         {
             //std::cout << "Wave Pattern" << std::endl;
+            if(!Emu->apu.GlobalRegs.AudioMasterControlNR52.Ch3On)
+            {
+                Emu->apu.waveRam[adress - 0xFF30] = data;
+            }
             //NO_IMPL
         }
         else if (adress >= 0xFF40 && adress <= 0xFF4B)
