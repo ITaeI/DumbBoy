@@ -14,7 +14,9 @@ namespace GBEmu
     {
         // Reset For new use
         memset(VRAM, 0, 0x2000 * sizeof(u8));
-        memset(ScreenBuffer, 0, 0x5A00 * sizeof(u8)); // used only for debugging atm
+        memset(ScreenBuffer, 0, sizeof(ScreenBuffer));
+        FrameLoaded = true;
+
         Mode = 2;
         dots = 0;
 
@@ -60,11 +62,16 @@ namespace GBEmu
                     if (lcdRegs.LY.read() == 144) // if VBlank mode is next
                     {
                         Mode = 1;
+                        {
+                            std::unique_lock<std::mutex> lock(mtx);
+                            FrameLoaded = true;
+                        }
+
                         lcdRegs.STAT.write((lcdRegs.STAT.read() & 0xFC) | Mode);
-                        Emu->processor.IF.setBit(VBlank,true); // Set Vblank Interrupt flag
+                        Emu->processor.IF.setBit(VBlank_Int,true); // Set Vblank Interrupt flag
                         if(lcdRegs.STAT.readBit(4)) // if Mode 1 is a set as LCD interrupt condition
                         {
-                            Emu->processor.IF.setBit(LCD,true);
+                            Emu->processor.IF.setBit(LCD_Int,true);
                         }
                         
                     }
@@ -73,7 +80,7 @@ namespace GBEmu
                         lcdRegs.STAT.write((lcdRegs.STAT.read() & 0xFC) | Mode);
                         if(lcdRegs.STAT.readBit(5))
                         {
-                            Emu->processor.IF.setBit(LCD,true);
+                            Emu->processor.IF.setBit(LCD_Int,true);
                         }
                     }
                 }
@@ -86,17 +93,28 @@ namespace GBEmu
                 {
                     dots -= 456;
                     lcdRegs.LY.Increment();
-                    compare_LY_LYC();
-
+                    // This signals the Next frame to occur
+                    // Thus Changing modes back to 2 (OAM Scan)
                     if(lcdRegs.LY.read() == 154)
                     {
+                        // Here we wait for the frame to render
+                        {
+                            std::unique_lock<std::mutex> lock(mtx);
+                            cv.wait(lock, [this]() {return !FrameLoaded || Emu->cpu_reset || Emu->exit;});
+                        }
+                        
                         Mode = 2;
                         lcdRegs.LY.write(0);
+                        compare_LY_LYC();
                         lcdRegs.STAT.write((lcdRegs.STAT.read() & 0xFC) | Mode);
                         if(lcdRegs.STAT.readBit(5)) // OAM interrupt
                         {
-                            Emu->processor.IF.setBit(LCD,true);
+                            Emu->processor.IF.setBit(LCD_Int,true);
                         }
+                    }
+                    else
+                    {
+                        compare_LY_LYC();
                     }
                 }
                 break;
@@ -126,7 +144,7 @@ namespace GBEmu
                     lcdRegs.STAT.write((lcdRegs.STAT.read() & 0xFC) | Mode);
                     if(lcdRegs.STAT.readBit(3))
                     {
-                        Emu->processor.IF.setBit(LCD,true);
+                        Emu->processor.IF.setBit(LCD_Int,true);
                     }
                 }
                 break;
@@ -142,7 +160,7 @@ namespace GBEmu
         lcdRegs.STAT.setBit(2,LY_LYC_compare);
         if (LY_LYC_compare)
         {
-            Emu->processor.IF.setBit(LCD,true);
+            Emu->processor.IF.setBit(LCD_Int,true);
         } 
     } 
 
@@ -179,7 +197,7 @@ namespace GBEmu
         if (lcdRegs.LCDC.readBit(5)) // First Check if window is enabled
         {
             // Now check if we are within the window bounds
-            if ((lcdRegs.LY.read()  >=  lcdRegs.WY.read() && lcdRegs.LY.read()  <=  lcdRegs.WY.read() + 31) && (currentX >= lcdRegs.WX.read()-7 && currentX <= lcdRegs.WX.read() + 24))
+            if (lcdRegs.LY.read()  >= lcdRegs.WY.read() && currentX >= lcdRegs.WX.read() - 7)
             {
                 CurrentTileIsWindow = true;
 
@@ -219,12 +237,12 @@ namespace GBEmu
         if (CurrentTileIsWindow)
         {
             xPos -= windowX;
-            yPos = (lcdRegs.LY.read() - windowY);
+            yPos = (lcdRegs.LY.read() - windowY) & 255;
         }
         else
         {
             xPos += scrollX;
-            yPos = (scrollY + lcdRegs.LY.read() );
+            yPos = (scrollY + lcdRegs.LY.read());
         }
 
         // Now depending on Adressing mode we use signed or unsigned tile number
@@ -248,10 +266,12 @@ namespace GBEmu
         u8 lo_bit = (lo >> (7-(xPos)%8)) & 1;
         u8 hi_bit = (hi >> (7-(xPos)%8)) & 1;
 
-        u8 color_byte = (hi_bit << 1) | lo_bit;
+        u8 colorID = (hi_bit << 1) | lo_bit;
 
-        // We now move the final color byte to the BG FIFO
+        //now with the color id we will apply the palette
+        u8 color_byte = fetchPaletteColor(colorID, lcdRegs.BGP.read());
 
+        // We now move the final color byte to the screen buffer
         ScreenBuffer[currentX + lcdRegs.LY.read() * 160] = color_byte;
     }
 
@@ -299,11 +319,15 @@ namespace GBEmu
                 u8 hi_bit = (hi >> (7-SpriteX)) & 1;
 
                 // Combine the pixel bits to output color byte
-                u8 color_byte = (hi_bit << 1) | lo_bit;
+                u8 colorID = (hi_bit << 1) | lo_bit;
 
+                // Now We Check which palette this Object is using
+                u8 OBJpalette = oam.o[object].Palette ? lcdRegs.OBP1.read() : lcdRegs.OBP0.read();
 
-                if(color_byte != 0x00)
+                if(colorID != 0x00)
                 {
+                    // Apply The palette according to the color id
+                    u8 color_byte = fetchPaletteColor(colorID, OBJpalette);
                     if (oam.o[object].Priority)
                     {
                         if(ScreenBuffer[currentX + lcdRegs.LY.read()*160] == 0x00)
@@ -327,6 +351,12 @@ namespace GBEmu
     {
         fetchBGPixel(currentX);
         fetchSpritePixel(currentX);
+    }
+
+    u8 PPU::fetchPaletteColor(u8 colorID, u8 palette)
+    {
+        colorID = (palette >> (colorID) * 2) & 0x3;
+        return colorID;
     }
 
     u8 PPU::lcd_read(u16 adress)
@@ -390,27 +420,21 @@ namespace GBEmu
         switch (adress)
         {
             case 0xFF40:
-                std::cout << "LCD Control" << std::endl;
                 lcdRegs.LCDC.write(data);
                 break;
             case 0xFF41:
-                std::cout << "LCD Status" << std::endl;
                 lcdRegs.STAT.write((data & 0xFC) | (lcdRegs.STAT.read() & 0x03)); // Bits 0-2 are read only
                 break;
             case 0xFF42:
-                std::cout << "Scroll Y" << std::endl;
                 lcdRegs.SCY.write(data);
                 break;
             case 0xFF43:
-                std::cout << "Scroll X" << std::endl;
                 lcdRegs.SCX.write(data);
                 break;
             case 0xFF44:
-                std::cout << "LY" << std::endl;
                 lcdRegs.LY.write(data);
                 break;
             case 0xFF45:
-                std::cout << "LY Compare" << std::endl;
                 lcdRegs.LYC.write(data);
                 break;
             case 0xFF46:
@@ -434,23 +458,18 @@ namespace GBEmu
                 Emu->dma.StartTransfer(data); // Starts DMA transfer
                 break;
             case 0xFF47:
-                std::cout << "BG Palette Data" << std::endl;
                 lcdRegs.BGP.write(data);
                 break;
             case 0xFF48:
-                std::cout << "OBJ Palette 0 Data" << std::endl;
                 lcdRegs.OBP0.write(data);
                 break;
             case 0xFF49:
-                std::cout << "OBJ Palette 1 Data" << std::endl;
                 lcdRegs.OBP1.write(data);
                 break;
             case 0xFF4A:
-                std::cout << "Window Y Position" << std::endl;
                 lcdRegs.WY.write(data);
                 break;
             case 0xFF4B:
-                std::cout << "Window X Position" << std::endl;
                 lcdRegs.WX.write(data);
                 break;
             default:

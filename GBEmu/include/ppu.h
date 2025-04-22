@@ -2,11 +2,15 @@
 #include "common.h"
 #include "registers.h"
 #include <array>
+#include <atomic>
+#include <mutex>
+#include <condition_variable>
 
 
 namespace GBEmu
 {
     class Emulator;
+
     class PPU
     {
         private:
@@ -137,19 +141,13 @@ namespace GBEmu
         // FIFO pixel Fetcher Functions/variables
         void fetchBGPixel(u8 currentX);
         void fetchSpritePixel(u8 currentX);
+        u8 fetchPaletteColor(u8 colorID, u8 palette);
         void PushPixelToLCD(u8 currentX);
-        u8 ScreenBuffer[0x5A00];
-
-        struct FIFO_Entry
-        {
-            u8 color; // 0-3
-            u8 pallete; // OBP1 or OBP2 (DMG) - 0-7 (CGB)
-            u8 spritePriority; // only for Sprites on CGB
-            u8 BackgroundPriority; // keeps bit 7 of Sprite
-        };
         
-        // FIFO arrays
-        std::array<FIFO_Entry, 8> FIFO_BG;
-        std::array<FIFO_Entry, 8> FIFO_SPR;
+        u8 ScreenBuffer[0x5A00];
+        std::atomic<bool> FrameLoaded = false;
+        std::mutex mtx;
+        std::condition_variable cv;
     };
+
 }

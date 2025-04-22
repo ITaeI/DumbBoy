@@ -1,10 +1,9 @@
 #include "common.h"
 #include <map>
-#include <iostream>
 #include <fstream>
-#include <string>
 #include "cart.h"
 #include "Emulator.h"
+#include <ctime>
 
 namespace GBEmu
 {
@@ -29,7 +28,7 @@ namespace GBEmu
                 }
                 else
                 {
-                    return cart_romdata[addr + ZeroBank * 0x4000];
+                    return cart_romdata[addr + (ZeroBank * 0x4000)];
                 }
             }
             else if (addr >= 0x4000 && addr <= 0x7FFF)
@@ -83,6 +82,59 @@ namespace GBEmu
                 return cart_romdata[addr];
             }
         }
+        else if (MBC3)
+        {
+            if(addr <= 0x3FFF)
+            {
+                return cart_romdata[addr];
+            }
+            else if (addr <= 0x7FFF)
+            {
+                return cart_romdata[(addr - 0x4000) + (current_rom_bank*0x4000)];
+            }
+            else if (addr >= 0xA000 && addr <= 0xBFFF)
+            {
+
+                if(isClockRegisterMapped)
+                {
+                    if (!latchOccured)
+                    {
+                        return 0xFF;
+                    }
+
+                    switch (currentRTCReg)
+                    {
+                    case 0x08:
+                        return 0b11000000 | RTCLatched.s;
+                        break;
+                    case 0x09:
+                        return 0b11000000 | RTCLatched.m;
+                        break;
+                    case 0x0A:
+                        return 0b11100000 | RTCLatched.h;
+                        break;
+                    case 0x0B:
+                        return RTCLatched.DL;
+                        break;
+                    case 0x0C:
+                        return 0b00111110 | RTCLatched.DH;
+                        break;
+
+                    
+                    default:
+                        break;
+                    }
+                }
+                else
+                {
+                    if(!ram_enabled)
+                    {
+                        return 0xFF;
+                    }
+                    return ram_Banks[(addr - 0xA000) + (current_ram_bank * 0x2000)];
+                }
+            }
+        }
 
         return cart_romdata[addr];
     }
@@ -93,9 +145,9 @@ namespace GBEmu
     {
         if (MBC1)
         {
-            if (addr >= 0x0000 && addr <= 0x1FFF) // set ram enabled
+            if (addr <= 0x1FFF) // set ram enabled
             {
-                if(data & 0xF == 0xA)
+                if((data & 0xF) == 0xA)
                 {
                     ram_enabled = true;
                 }
@@ -104,8 +156,13 @@ namespace GBEmu
                     ram_enabled = false;
                 }
             }
-            else if (addr >= 0x2000 && addr <= 0x3FFF) // set rom bank
+            else if (addr <= 0x3FFF) // set rom bank
             {
+                if (data == 0x00)
+                {
+                    current_rom_bank = 1;
+                    return;
+                }
                 switch(header->rom_size)
                 {
                     case 0x00: // 32 KiB (no banking)
@@ -135,12 +192,12 @@ namespace GBEmu
 
                 }
             }
-            else if(addr >= 0x4000 && addr <= 0x5FFF)
+            else if(addr <= 0x5FFF)
             {
                 // change the last two bits to the last two bits of written data
                 current_ram_bank = (current_ram_bank & 0xFC) | (data & 0x03);
             }
-            else if(addr >= 0x6000 && addr <= 0x7FFF)
+            else if(addr <= 0x7FFF)
             {
                 modeFlag |= (data &0x1); // set the mode flag to the lowest bit of written data
             }
@@ -164,7 +221,7 @@ namespace GBEmu
                 }
                 else
                 {
-                    ram_Banks[(addr - 0xA000)] = data;
+                    ram_Banks[(addr - 0xA000) % 0x2000] = data;
                 }
             }
         }
@@ -175,7 +232,7 @@ namespace GBEmu
                 // Check 8th bit and if lower nible == 0xA
                 if(!(addr >> 8 & 1))
                 {
-                    if (addr & 0x0F == 0xA)
+                    if (data & 0x0F == 0xA)
                     {
                          ram_enabled = true; 
                     }
@@ -206,6 +263,99 @@ namespace GBEmu
                 }
 
                 ram_Banks[(addr - 0xA000) & 0x1FF] = data;
+            }
+        }
+        else if(MBC3)
+        {
+            if(addr <= 0x1FFF)
+            {
+                if((data & 0xF) == 0xA)
+                {
+                    ram_enabled = true;
+                }
+                else
+                {
+                    ram_enabled = false;
+                }
+            }
+            else if(addr <= 0x3FFF)
+            {
+                if(data == 0)
+                {
+                    current_rom_bank = 1;
+                }
+                else
+                {
+                    current_rom_bank = data & 0x7F;
+                }
+            }
+            else if (addr <= 0x5FFF)
+            {
+                if(data <= 0x03)
+                {
+                    isClockRegisterMapped = false;
+                    current_ram_bank = data;
+
+                }
+                else if(data >= 0x08 && data <= 0x0C)
+                {
+                    isClockRegisterMapped = true;
+                    currentRTCReg = data;
+                }
+            }
+            else if (addr <= 0x7FFF)
+            {
+
+                // if the input of 0x00 is followed by a 0x01
+                if(prevInput == 0x00 and data == 0x01)
+                {
+                    RTCLatched = RTC;
+                    latchOccured = true;
+                }
+                prevInput = data;
+
+            }
+            else if (addr >= 0xA000 && addr <= 0xBFFF)
+            {
+                if(isClockRegisterMapped)
+                {
+                    switch (currentRTCReg)
+                    {
+                    case 0x08:
+                        RTCLatched.s = data & 0b00111111;
+                        RTC.s = data & 0b00111111;
+                        Emu->ticks = 0; // resets sub second counter
+                        break;
+                    case 0x09:
+                        RTCLatched.m = data & 0b00111111;
+                        RTC.m = data & 0b00111111;
+                        break;
+                    case 0x0A:
+                        RTCLatched.h = data & 0b00011111;
+                        RTC.h = data & 0b00011111;
+                        break;
+                    case 0x0B:
+                        RTCLatched.DL = data;
+                        RTC.DL = data;
+                        break;
+                    case 0x0C:
+                        RTCLatched.DH = data & 0b11000001;
+                        RTC.DH = data & 0b11000001;
+                        break;
+
+                    
+                    default:
+                        break;
+                    }
+                }
+                else
+                {
+                    if(!ram_enabled)
+                    {
+                        return;
+                    }
+                    ram_Banks[(addr - 0xA000) + (current_ram_bank * 0x2000)] = data;
+                }
             }
         }
 
@@ -287,13 +437,23 @@ namespace GBEmu
 
     void cart::setupBanking()
     {
-        if(header->cart_type >= 0x01 && header->cart_type <= 0x03)
+        // Set Memory Bank controller/timer Bools to a known state;
+        MBC1 = false;
+        MBC2 = false;
+        MBC3 = false;
+
+        // Check to see which Memory bank controller the rom is using;
+        if(getRomTypeName(header->cart_type).find("MBC1") != std::string::npos)
         {
             MBC1 = true;
         }
-        else if(header->cart_type >= 0x05 && header->cart_type <= 0x06)
+        else if(getRomTypeName(header->cart_type).find("MBC2") != std::string::npos)
         {
             MBC2 = true;
+        }
+        else if(getRomTypeName(header->cart_type).find("MBC3") != std::string::npos)
+        {
+            MBC3 = true;
         }
 
         // Initalize which rom bank we are pointing to (always one at the beginning)
@@ -306,6 +466,14 @@ namespace GBEmu
 
         // For MBC1
         modeFlag = 0;
+
+        // For MBC3
+        memset(&RTC,0,sizeof(RTC));
+        memset(&RTCLatched,0,sizeof(RTCLatched));
+        isClockRegisterMapped = false;
+        latchOccured = false;
+        prevInput = 0x10; // arbitrary starting value
+
     }
 
     void cart::CalculateZeroBank()
@@ -335,13 +503,147 @@ namespace GBEmu
         else if(header->rom_size == 0x5)
         {
             // replace 5th bit with lowest bit of ram bank
-            HighBank = (current_rom_bank & 0b11101111) | (current_ram_bank & 0x1) << 5;
+            HighBank = (current_rom_bank & 0b11011111) | ((current_ram_bank & 0x1) << 5);
 
         }
         else if(header->rom_size == 0x6)
         {
             // replace 5th and 6th bit with lowest two bits of ram bank number
-            HighBank = (current_rom_bank & 0b11001111) | (current_ram_bank & 0x3) << 5;
+            HighBank = (current_rom_bank & 0b10011111) | ((current_ram_bank & 0x3) << 5);
+        }
+    }
+
+    void cart::ClockTick()
+    {
+        RTC.s++;
+        if(RTC.s == 60)
+        {
+            RTC.s = 0;
+            RTC.m++;
+            if(RTC.m == 60)
+            {
+                RTC.m = 0;
+                RTC.h++;
+                if(RTC.h == 24)
+                {
+                    RTC.DL++;
+                    RTC.h = 0;
+            
+                    if(RTC.DL == 0x00)
+                    {
+                        RTC.DH ^= (1<<7);
+                    }
+                }
+            }
+        }
+
+    }
+
+    void cart::save()
+    {
+        // Check so see if the cartridge supports Battery Buffered ram (ie Save Files)
+        // Thus check for it BATTERY in the ROM Type name
+        if (!cartridgeLoaded)
+        {
+            std::cout << "No Save Necessary" << std::endl;
+            return;
+        }
+
+        if(getRomTypeName(header->cart_type).find("BATTERY") != std::string::npos)
+        {
+            // Grab the name of the ROM
+            std::string savePath = cart_filename;
+            // Replace the .gb extension with .sav
+            size_t extensionPos = savePath.find_last_of('.'); //Grabs last occurence of Extension ID
+            
+            savePath = LastRomDir + savePath.substr(0,extensionPos) + ".sav";
+            std::ofstream saveFile;
+            
+            saveFile.open(savePath, std::ios::binary);
+
+            if(!saveFile.is_open())
+            {
+                std::cout << "Unable to save file" << std::endl;
+                return;
+            }
+
+            saveFile.write(reinterpret_cast<char*>(ram_Banks), sizeof(ram_Banks));
+            saveFile.close();
+        }
+
+        if(getRomTypeName(header->cart_type).find("TIMER") != std::string::npos)
+        {
+            // Grab the name of the ROM
+            std::string savePath = cart_filename;
+            // Replace the .gb extension with .sav
+            size_t extensionPos = savePath.find_last_of('.'); //Grabs last occurence of Extension ID
+            
+            savePath = LastRomDir + savePath.substr(0,extensionPos) + ".rtc";
+            std::ofstream saveFile;
+            
+            saveFile.open(savePath, std::ios::binary);
+
+            if(!saveFile.is_open())
+            {
+                std::cout << "Unable to save file" << std::endl;
+                return;
+            }
+
+            saveFile.write(reinterpret_cast<char*>(&RTC), sizeof(RTC));
+            saveFile.write(reinterpret_cast<char*>(&RTCLatched), sizeof(RTCLatched));
+            saveFile.close();
+        }
+    }
+
+    void cart::reloadSave()
+    {
+        // Check so see if the cartridge supports Battery Buffered ram (ie Save Files)
+        // Thus check for it BATTERY in the ROM Type name
+        if(getRomTypeName(header->cart_type).find("BATTERY") != std::string::npos)
+        {
+            // Grab the name of the ROM
+            std::string savePath = cart_filename;
+            // Replace the .gb extension with .sav
+            size_t extensionPos = savePath.find_last_of('.'); //Grabs last occurence of Extension ID
+            
+            savePath = LastRomDir + savePath.substr(0,extensionPos) + ".sav"; 
+
+            std::ifstream saveFile;
+
+            saveFile.open(savePath, std::ios::binary);
+
+            if(!saveFile.is_open())
+            {
+                std::cout << "Failed To load Save" << std::endl;
+                return;
+            }
+
+            saveFile.read(reinterpret_cast<char*>(ram_Banks), sizeof(ram_Banks));
+            saveFile.close();
+        }
+
+        if(getRomTypeName(header->cart_type).find("TIMER") != std::string::npos)
+        {
+            // Grab the name of the ROM
+            std::string savePath = cart_filename;
+            // Replace the .gb extension with .sav
+            size_t extensionPos = savePath.find_last_of('.'); //Grabs last occurence of Extension ID
+            
+            savePath = LastRomDir + savePath.substr(0,extensionPos) + ".rtc"; 
+
+            std::ifstream saveFile;
+
+            saveFile.open(savePath, std::ios::binary);
+
+            if(!saveFile.is_open())
+            {
+                std::cout << "Failed To load Clock" << std::endl;
+                return;
+            }
+
+            saveFile.read(reinterpret_cast<char*>(&RTC), sizeof(RTC));
+            saveFile.read(reinterpret_cast<char*>(&RTCLatched), sizeof(RTCLatched));
+            saveFile.close();
         }
     }
 
@@ -350,17 +652,27 @@ namespace GBEmu
         // Copy the filename to the cart context
         strcpy(cart_filename, filename);
 
-        //Adde the location context to the name of the rom file
-        std::string filepath = "../../GBEmu/Roms/" + std::string(filename);
+        //Add the location context to the file path
+        size_t DirLength = strlen(CurrentDir);
+        if(CurrentDir[DirLength-1] != '/')
+        {
+            CurrentDir[DirLength] = '/';
+        }
+
+        // Make a copy so we know where to save and reload save files
+        LastRomDir = CurrentDir;
+
+        // Using File name the current Directory Build a file path
+        std::string filepath = CurrentDir + std::string(filename);
 
         // Open the file and seek to the end
         std::ifstream file(filepath, std::ios::binary| std::ios::ate);
         if (!file.is_open())
         {
+            // If File cannot be found Stop the CPU thread
+            Emu->stopCPU();
             return false;
         }
-
-        std::cout << "Loading ROM: " << filename << std::endl;
 
         // Get the file size and seek back to the beginning
         //since we are at the end of the file we can get the size from the pointer location
@@ -384,8 +696,14 @@ namespace GBEmu
         std::cout << "ROM Size: " << (32*1024*(1 << header->rom_size)) << " bytes" << std::endl;
         std::cout << "RAM Size: " << (int)(header->ram_size) << " bytes" << std::endl;
         std::cout << "Version: " << (int)header->version << std::endl;
-
+        
+        // Sets Up Which Memory Bankcontroller we are using
         setupBanking();
+
+        // Now We check to see if there is a save file for the ROM
+        reloadSave();
+
+        cartridgeLoaded = true;
 
         //Build Checksum
         u8 checksum = 0;

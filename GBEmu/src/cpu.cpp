@@ -14,8 +14,14 @@ namespace GBEmu
         
         if(!isHalted)
         {
-            
+            // Read an opcode from Rom
             opcode = read_memory(reg.pc.read());
+            if(HaltBug)
+            {
+                reg.pc.Decrement();
+                HaltBug = false;
+            }
+            // If Opcode is CB we read another opcode and use a different instruction
             if (opcode == 0xCB)
             {   
                 opcode = read_memory(reg.pc.read());
@@ -23,31 +29,26 @@ namespace GBEmu
             }
             else
             {   
-                u8 temp = Emu->systemBus.read(0xFF02);
-                if(temp == 0x81)
-                {
-                    DBG.push_back((char)(Emu->systemBus.read(0xFF01)));
-                    Emu->systemBus.write(0xFF02,0x00);
-                    std::cout << "Debug Message: " << DBG << std::endl;
-                }
-
-                if(reg.pc.read() -1  == 0x7DA)
-                {
-                    std::cout << "breakpoint" << std::endl;
-                }
-    
+                // if(reg.hl.read() == 0x9860)
+                // {
+                //     Emu->debug = true;
+                // }
                 executeInstruction();
+
+
             }
         }
-        else{
+        else
+        {
 
             Emu->ClockCycle(1);
-            if(IF.read())
+            if((IE.read() & IF.read()) != 0)
             {
                 isHalted = false;
             }
             
         }
+
 
         if(IME)
         {
@@ -64,40 +65,40 @@ namespace GBEmu
 
     void cpu::HandleInterrupts()
     {
-        if(IE.readBit(VBlank) && IF.readBit(VBlank))
+        if(IE.readBit(VBlank_Int) && IF.readBit(VBlank_Int))
         {
             PUSH_R16(reg.pc);
             reg.pc.write(0x40);
             IME = false;
-            IF.setBit(VBlank,0);
+            IF.setBit(VBlank_Int,0);
         }
-        else if (IE.readBit(LCD) && IF.readBit(LCD))
+        else if (IE.readBit(LCD_Int) && IF.readBit(LCD_Int))
         {
             PUSH_R16(reg.pc);
             reg.pc.write(0x48);
             IME = false;
-            IF.setBit(LCD,0);
+            IF.setBit(LCD_Int,0);
         }
-        else if (IE.readBit(Timer) && IF.readBit(Timer))
+        else if (IE.readBit(Timer_Int) && IF.readBit(Timer_Int))
         {
             PUSH_R16(reg.pc);
             reg.pc.write(0x50);
             IME = false;
-            IF.setBit(Timer,0);
+            IF.setBit(Timer_Int,0);
         }
-        else if (IE.readBit(Serial) && IF.readBit(Serial))
+        else if (IE.readBit(Serial_Int) && IF.readBit(Serial_Int))
         {
             PUSH_R16(reg.pc);
             reg.pc.write(0x58);
             IME = false;
-            IF.setBit(Serial,0);
+            IF.setBit(Serial_Int,0);
         }
-        else if (IE.readBit(Joypad) && IF.readBit(Joypad))
+        else if (IE.readBit(Joypad_Int) && IF.readBit(Joypad_Int))
         {
             PUSH_R16(reg.pc);
             reg.pc.write(0x60);
             IME = false;
-            IF.setBit(Joypad,0);
+            IF.setBit(Joypad_Int,0);
         }
     }
 
@@ -137,8 +138,8 @@ namespace GBEmu
 
     void cpu::write_memory(u16 addr, u8 data)
     {   
-        Emu->ClockCycle(1);
         Emu->systemBus.write(addr, data);
+        Emu->ClockCycle(1);
     }
 
     u16 cpu::fetch16Bit()
@@ -724,6 +725,8 @@ namespace GBEmu
             case 0xFF: currentInstruction = Instruction("RST 38H", 1, 16); RST_u8(0x38); break;
             default: isHalted = true; break;
         }
+
+
 
     };
     
@@ -1878,7 +1881,21 @@ namespace GBEmu
     //Look more into this
     void cpu::HALT()
     {
-        isHalted = true;
+        if (IME)
+        {
+            isHalted = true;
+        }
+        else
+        {
+            if((IE.read() & IF.read()) != 0)
+            {
+                HaltBug = true;
+            }
+            else
+            {
+                isHalted = true;
+            }
+        }
     }
 
     void cpu::STOP()

@@ -7,6 +7,8 @@
     adressBus - The Gameboy Address Bus
     PPU - The Gameboy Pixel Processing Unit
     Timer - The Gameboy Timer
+    JoyPad - Game inputs
+    APU - Audio Prcessing Unit
 
 */ 
 
@@ -23,7 +25,8 @@ namespace GBEmu
         timer.connectTimer(this);
         ppu.connectPPU(this);
         dma.connectDMA(this);
-
+        joypad.connectJoypad(this);
+        apu.connectAPU(this);
     }
 
     Emulator::~Emulator()
@@ -77,6 +80,7 @@ namespace GBEmu
     {
         running = false;
         cpu_reset = true;
+        ppu.cv.notify_all();
         if(cpu_thread.joinable())
         {
             cpu_thread.join();
@@ -103,6 +107,12 @@ namespace GBEmu
 
         // Reset PPU
         ppu.init();
+
+        // reset Joypad
+        joypad.init();
+
+        // Reset APU
+        apu.init();
     }
 
     int Emulator::run()
@@ -126,12 +136,26 @@ namespace GBEmu
 
         for(int i = M_Cycles; i > 0; i--)  
         {
+
             for(int j = 0; j < 4; j++)
             {
                 ticks++;
                 timer.timer_tick();
                 ppu.tick();
+                apu.tick();
             }
+
+            // if((cartridge.RTC.DH >> 6) & 1)
+            // {
+            //     ticks -= 4;
+            // }
+
+            if(ticks >= 4194304)
+            {
+                cartridge.ClockTick();
+                ticks = 0;
+            }
+            
             dma.tick();
         }
     }
