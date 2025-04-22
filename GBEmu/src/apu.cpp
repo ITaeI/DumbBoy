@@ -36,12 +36,16 @@ namespace GBEmu
         {
             case 0b00:
                 waveform = {0,0,0,0,0,0,0,1}; // 12.5%
+                break;
             case 0b01:
                 waveform = {1,0,0,0,0,0,0,1}; // 25%
+                break;
             case 0b10:
                 waveform = {1,0,0,0,0,1,1,1}; // 50%
+                break;
             case 0b11:
                 waveform = {0,1,1,1,1,1,1,0}; // 75%
+                break;
         }
         return waveform[Phase];
     }
@@ -114,6 +118,8 @@ namespace GBEmu
                     {
                         Ch1.Volume = TempVol;
                     }
+
+                    Ch1.EnvelopeTimer = Ch1.NR12.EnvPace;
                 }
             }
             if(GlobalRegs.AudioMasterControlNR52.Ch2On && Ch2.EnvelopeEnabled)
@@ -130,6 +136,7 @@ namespace GBEmu
                     {
                         Ch2.Volume = TempVol;
                     }
+                    Ch2.EnvelopeTimer = Ch2.NR22.EnvPace;
                 }
             }
 
@@ -147,6 +154,7 @@ namespace GBEmu
                     {
                         Ch4.Volume = TempVol;
                     }
+                    Ch4.EnvelopeTimer = Ch4.NR42.SweepPace;
                 }
             }
         }
@@ -177,23 +185,39 @@ namespace GBEmu
 
     void Channel1::FrequencySweep()
     {
-        
-        if(--SweepTimer == 0)
+        // Decrement Timer and Check if its 0
+        if(SweepTimer > 0)
         {
-            u16 NewFrequency = FrequencyCalculation();
+            SweepTimer--;
+        }
 
-            if (NewFrequency <= 2047)
+        if(SweepTimer == 0)
+        {
+            if(NR10.SweepPace > 0)
             {
-                Frequency = NewFrequency;
-                NR13 = NewFrequency & 0xFF;
-                NR14.Raw = (NR14.Raw & 0xF8) | (NewFrequency >> 8);
                 SweepTimer = NR10.SweepPace;
-
-                // If the first Frequency calc is within range 
-                // immdediately do the frequency calc and overflow check again
-                FrequencyCalculation();
+            }
+            else
+            {
+                SweepTimer = 8;
             }
 
+            if(NR10.SweepPace != 0)
+            {
+                u16 NewFrequency = FrequencyCalculation();
+
+                if(NewFrequency <= 2047 && NR10.SweepStep !=0)
+                {
+
+                    // Set Shadow and Registers to New Frequency
+                    Frequency = NewFrequency;
+                    NR13 = NewFrequency & 0xFF;
+                    NR14.UpperPeriod = (NewFrequency & 0x7) >> 8;
+
+
+                    FrequencyCalculation();
+                }
+            }
         }
     }
 
@@ -206,6 +230,7 @@ namespace GBEmu
         if(NR10.SweepDirection)
         {
             NewFrequency = Frequency - NewFrequency;
+            negateModeCalculations++;
         }
         else
         {
@@ -481,6 +506,14 @@ namespace GBEmu
         {
         case 0xFF10:
             Ch1.NR10.Raw = data;
+            if(data == 9)
+            {
+                std::cout << " break";
+            }
+            if(!Ch1.NR10.SweepDirection && Ch1.negateModeCalculations > 0)
+            {
+                GlobalRegs.AudioMasterControlNR52.Ch1On = 0;
+            }
             break;
         case 0xFF11:
             // Bits 7 and 6 are Ch1's wave duty
@@ -734,10 +767,14 @@ namespace GBEmu
         EnvelopeEnabled = true;
         
         /******************Sweep Related Trigger Events****************************/
+        
+        // Reset how many negate mode calculations occured
+        negateModeCalculations = 0;
         // Reload Frequency Shadow Reg with period/Frequency
         Frequency = NR14.UpperPeriod << 8 | NR13;
-        // Reset SweepTimer
-        SweepTimer = NR10.SweepPace;
+        // Reset SweepTimer equals 8 if pace is 0
+        SweepTimer = NR10.SweepPace == 0 ? 8 : NR10.SweepPace;
+
         // Set enable flag on certain conditions
         if(NR10.SweepPace != 0 || NR10.SweepStep != 0)
         {
@@ -972,8 +1009,14 @@ namespace GBEmu
 
     void Channel4::tick()
     {
+
+        if(!apu->GlobalRegs.AudioMasterControlNR52.Ch4On)
+        {
+            return;
+        }
         if(--FrequencyTimer == 0)
         {
+            // Grab the first 2 bits
             u8 Bit0 = LFSR & 1;
             u8 Bit1 = (LFSR >> 1) & 1;
 
@@ -985,7 +1028,6 @@ namespace GBEmu
             {
                 LFSR = ((Bit0 ^ Bit1) << 7) | (LFSR & ~(1<<7));
             }
-            
         }
     }
 }

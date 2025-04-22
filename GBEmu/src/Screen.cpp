@@ -57,7 +57,6 @@ namespace GBEmu
 
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
         io.FontGlobalScale = 2.0f;
 
@@ -139,7 +138,7 @@ namespace GBEmu
                         }
 
                     }
-                    else if(ImGui::MenuItem("Load Rom"))
+                    else if(ImGui::MenuItem("Select Rom"))
                     {
                         ScanForRoms(Emu->cartridge.CurrentDir);
                         LoadRom = !LoadRom;
@@ -283,7 +282,7 @@ namespace GBEmu
                 ImGui::Text("Instruction : %s", Emu->processor.currentInstruction.mnemonic.c_str());
                 if(ImGui::BeginTable("CPU Registers", 4, ImGuiTableFlags_None))
                 {
-                    ImGui::TableSetupColumn("CPU Registers", ImGuiTableColumnFlags_NoResize);
+                    ImGui::TableSetupColumn("CPU Registers", ImGuiTableColumnFlags_NoResize | ImGuiTableColumnFlags_NoClip);
                     ImGui::TableSetupColumn("##Value 1", ImGuiTableColumnFlags_NoResize);
                     ImGui::TableSetupColumn("##Regs 2", ImGuiTableColumnFlags_NoResize);
                     ImGui::TableSetupColumn("##Value 2", ImGuiTableColumnFlags_NoResize);
@@ -296,39 +295,39 @@ namespace GBEmu
                     ImGui::Text("AF");
     
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("0x%04X", Emu->processor.reg.af.read());
+                    ImGui::Text("[ 0x%04X ]", Emu->processor.reg.af.read());
     
                     ImGui::TableSetColumnIndex(2);
                     ImGui::Text("BC");
     
                     ImGui::TableSetColumnIndex(3);
-                    ImGui::Text("0x%04X", Emu->processor.reg.bc.read());
+                    ImGui::Text("[ 0x%04X ]", Emu->processor.reg.bc.read());
     
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::Text("DE");
     
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("0x%04X", Emu->processor.reg.de.read());
+                    ImGui::Text("[ 0x%04X ]", Emu->processor.reg.de.read());
     
                     ImGui::TableSetColumnIndex(2);
                     ImGui::Text("HL");
     
                     ImGui::TableSetColumnIndex(3);
-                    ImGui::Text("0x%04X", Emu->processor.reg.hl.read());
+                    ImGui::Text("[ 0x%04X ]", Emu->processor.reg.hl.read());
     
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::Text("SP");
     
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("0x%04X", Emu->processor.reg.sp.read());
+                    ImGui::Text("[ 0x%04X ]", Emu->processor.reg.sp.read());
     
                     ImGui::TableSetColumnIndex(2);
                     ImGui::Text("PC");
     
                     ImGui::TableSetColumnIndex(3);
-                    ImGui::Text("0x%04X", Emu->processor.reg.pc.read());
+                    ImGui::Text("[ 0x%04X ]", Emu->processor.reg.pc.read());
     
     
                 }
@@ -352,78 +351,78 @@ namespace GBEmu
                     ImGui::Text("LCDC");
     
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("0x%02X", Emu->ppu.lcdRegs.LCDC.read());
+                    ImGui::Text("[ 0x%02X ]", Emu->ppu.lcdRegs.LCDC.read());
     
                     ImGui::TableSetColumnIndex(2);
                     ImGui::Text("STAT");
     
                     ImGui::TableSetColumnIndex(3);
-                    ImGui::Text("0x%02X", Emu->ppu.lcdRegs.STAT.read());
+                    ImGui::Text("[ 0x%02X ]", Emu->ppu.lcdRegs.STAT.read());
     
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::Text("SCY");
     
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("0x%02X", Emu->ppu.lcdRegs.SCY.read());
+                    ImGui::Text("[ 0x%02X ]", Emu->ppu.lcdRegs.SCY.read());
     
                     ImGui::TableSetColumnIndex(2);
                     ImGui::Text("SCX");
     
                     ImGui::TableSetColumnIndex(3);
-                    ImGui::Text("0x%02X", Emu->ppu.lcdRegs.SCX.read());
+                    ImGui::Text("[ 0x%02X ]", Emu->ppu.lcdRegs.SCX.read());
     
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::Text("LY");
     
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("0x%02X", Emu->ppu.lcdRegs.LY.read());
+                    ImGui::Text("[ 0x%02X ]", Emu->ppu.lcdRegs.LY.read());
     
                     ImGui::TableSetColumnIndex(2);
                     ImGui::Text("LYC");
     
                     ImGui::TableSetColumnIndex(3);
-                    ImGui::Text("0x%02X", Emu->ppu.lcdRegs.LYC.read());
+                    ImGui::Text("[ 0x%02X ]", Emu->ppu.lcdRegs.LYC.read());
 
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::Text("DMA");
     
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("0x%02X", Emu->ppu.lcdRegs.DMA.read());
+                    ImGui::Text("[ 0x%02X ]", Emu->ppu.lcdRegs.DMA.read());
     
                     ImGui::TableSetColumnIndex(2);
                     ImGui::Text("BGP");
     
                     ImGui::TableSetColumnIndex(3);
-                    ImGui::Text("0x%02X", Emu->ppu.lcdRegs.BGP.read());
+                    ImGui::Text("[ 0x%02X ]", Emu->ppu.lcdRegs.BGP.read());
                     
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::Text("OBP0");
     
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("0x%02X", Emu->ppu.lcdRegs.OBP0.read());
+                    ImGui::Text("[ 0x%02X ]", Emu->ppu.lcdRegs.OBP0.read());
     
                     ImGui::TableSetColumnIndex(2);
                     ImGui::Text("OBP1");
     
                     ImGui::TableSetColumnIndex(3);
-                    ImGui::Text("0x%02X", Emu->ppu.lcdRegs.OBP1.read());
+                    ImGui::Text("[ 0x%02X ]", Emu->ppu.lcdRegs.OBP1.read());
 
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::Text("WY");
     
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("0x%02X", Emu->ppu.lcdRegs.WY.read());
+                    ImGui::Text("[ 0x%02X ]", Emu->ppu.lcdRegs.WY.read());
     
                     ImGui::TableSetColumnIndex(2);
                     ImGui::Text("WX");
     
                     ImGui::TableSetColumnIndex(3);
-                    ImGui::Text("0x%02X", Emu->ppu.lcdRegs.WX.read());
+                    ImGui::Text("[ 0x%02X ]", Emu->ppu.lcdRegs.WX.read());
     
                 }
                 ImGui::EndTable();
@@ -721,6 +720,7 @@ namespace GBEmu
 
             }
             ImVec2 WindowSize = CalculateImageSize(16.0f,24.0f);
+            CenterTexture(WindowSize);
             ImGui::Image((ImTextureID)tileTexture, WindowSize); 
         }
         ImGui::End();
@@ -849,7 +849,7 @@ namespace GBEmu
         ImVec2 avail= ImGui::GetContentRegionAvail();
         static ImVec2 IntitalCursor = ImGui::GetCursorPos();
         ImVec2 CursorPoint;
-        CursorPoint.x =  ((avail.x - TextureSize.x) / 2);
+        CursorPoint.x =  ((avail.x *0.5 - TextureSize.x*0.5));
 
         ImGui::SetCursorPosX(CursorPoint.x);
     }
@@ -914,6 +914,7 @@ namespace GBEmu
 
     void Screen::RenderRomFolder()
     {
+        ImGui::SetNextWindowSizeConstraints(ImVec2(700,700),ImVec2(720,1280));
         if(ImGui::Begin("Rom Folder",nullptr,ImGuiWindowFlags_NoCollapse))
         {
             ImGui::Text("Current Rom Directory: ");
@@ -924,19 +925,7 @@ namespace GBEmu
                 ScanForRoms(Emu->cartridge.CurrentDir);
                 Emu->cartridge.CurrentRom = "";
             }
-            
-            ImGui::Separator();
-            ImGui::Separator();
 
-            for(auto& Rom : RomList)
-            {
-                if(ImGui::Selectable(Rom.c_str()))
-                {
-                    Emu->cartridge.CurrentRom = Rom;
-                }
-            }
-
-            ImGui::Separator();
             ImGui::Separator();
 
             if(ImGui::Button("Scan Directory"))
@@ -944,7 +933,7 @@ namespace GBEmu
                 ScanForRoms(Emu->cartridge.CurrentDir);
             }
             ImGui::SameLine();
-            if(ImGui::Button("LoadRom"))
+            if(ImGui::Button("Load Rom"))
             {
 
                 if (Emu->cartridge.CurrentRom != "")
@@ -970,6 +959,22 @@ namespace GBEmu
             }
 
             ImGui::Text( "Current Rom:  %s",Emu->cartridge.CurrentRom.c_str());
+            
+            ImGui::Separator();
+            ImGui::Separator();
+
+            for(auto& Rom : RomList)
+            {
+                if(ImGui::Selectable(Rom.c_str()))
+                {
+                    Emu->cartridge.CurrentRom = Rom;
+                }
+            }
+
+            ImGui::Separator();
+            ImGui::Separator();
+
+
         }
         ImGui::End();
     }
@@ -1026,70 +1031,77 @@ namespace GBEmu
         {
             // Process All IMGUI Window events
             ImGui_ImplSDL3_ProcessEvent(&event);
+
+            ImGuiIO& io = ImGui::GetIO();
             switch(event.type)
             {
                 case SDL_EVENT_QUIT:
                     Emu->exit = true;
                     break;
                 case SDL_EVENT_KEY_DOWN:
-                    switch(event.key.scancode)
+                    if(!io.WantCaptureKeyboard)
                     {
-                        case SDL_SCANCODE_W:
-                            Emu->joypad.PressKey(2);
-                            break;
-                        case SDL_SCANCODE_A:
-                            Emu->joypad.PressKey(1);
-                            break;
-                        case SDL_SCANCODE_S:
-                            Emu->joypad.PressKey(3);
-                            break;
-                        case SDL_SCANCODE_D:
-                            Emu->joypad.PressKey(0);
-                            break;
-                        case SDL_SCANCODE_O:
-                            Emu->joypad.PressKey(7);
-                            break;
-                        case SDL_SCANCODE_P:
-                            Emu->joypad.PressKey(6);
-                            break;
-                        case SDL_SCANCODE_K:
-                            Emu->joypad.PressKey(5);
-                            break;
-                        case SDL_SCANCODE_L:
-                            Emu->joypad.PressKey(4);
-                            break;
+                        switch(event.key.scancode)
+                        {
+                            case SDL_SCANCODE_W:
+                                Emu->joypad.PressKey(2);
+                                break;
+                            case SDL_SCANCODE_A:
+                                Emu->joypad.PressKey(1);
+                                break;
+                            case SDL_SCANCODE_S:
+                                Emu->joypad.PressKey(3);
+                                break;
+                            case SDL_SCANCODE_D:
+                                Emu->joypad.PressKey(0);
+                                break;
+                            case SDL_SCANCODE_O:
+                                Emu->joypad.PressKey(7);
+                                break;
+                            case SDL_SCANCODE_P:
+                                Emu->joypad.PressKey(6);
+                                break;
+                            case SDL_SCANCODE_K:
+                                Emu->joypad.PressKey(5);
+                                break;
+                            case SDL_SCANCODE_L:
+                                Emu->joypad.PressKey(4);
+                                break;
+                        }
                     }
                     break;
                 case SDL_EVENT_KEY_UP:
-
-                    switch(event.key.scancode)
+                    if(!io.WantCaptureKeyboard)
                     {
-                        case SDL_SCANCODE_W:
-                            Emu->joypad.ReleaseKey(2);
-                            break;
-                        case SDL_SCANCODE_A:
-                            Emu->joypad.ReleaseKey(1);
-                            break;
-                        case SDL_SCANCODE_S:
-                            Emu->joypad.ReleaseKey(3);
-                            break;
-                        case SDL_SCANCODE_D:
-                            Emu->joypad.ReleaseKey(0);
-                            break;
-                        case SDL_SCANCODE_O:
-                            Emu->joypad.ReleaseKey(7);
-                            break;
-                        case SDL_SCANCODE_P:
-                            Emu->joypad.ReleaseKey(6);
-                            break;
-                        case SDL_SCANCODE_K:
-                            Emu->joypad.ReleaseKey(5);
-                            break;
-                        case SDL_SCANCODE_L:
-                            Emu->joypad.ReleaseKey(4);
-                            break;
+                        switch(event.key.scancode)
+                        {
+                            case SDL_SCANCODE_W:
+                                Emu->joypad.ReleaseKey(2);
+                                break;
+                            case SDL_SCANCODE_A:
+                                Emu->joypad.ReleaseKey(1);
+                                break;
+                            case SDL_SCANCODE_S:
+                                Emu->joypad.ReleaseKey(3);
+                                break;
+                            case SDL_SCANCODE_D:
+                                Emu->joypad.ReleaseKey(0);
+                                break;
+                            case SDL_SCANCODE_O:
+                                Emu->joypad.ReleaseKey(7);
+                                break;
+                            case SDL_SCANCODE_P:
+                                Emu->joypad.ReleaseKey(6);
+                                break;
+                            case SDL_SCANCODE_K:
+                                Emu->joypad.ReleaseKey(5);
+                                break;
+                            case SDL_SCANCODE_L:
+                                Emu->joypad.ReleaseKey(4);
+                                break;
+                        }
+                        break;
                     }
-                    break;
             }
         }
     }

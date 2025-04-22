@@ -65,7 +65,7 @@ namespace GBEmu
         void setupBanking();
 
         
-        // - MBC1 Related Flags
+        // - MBC1 Related Flags/Functions
         bool MBC1 = false;
         u8 modeFlag;
 
@@ -111,13 +111,16 @@ namespace GBEmu
         void write(u16 addr, u8 data);
         //Save External RAM to .sav File
         void save();
-        //Reload External RAM from .save File if it exists
+        //Reload External RAM from .sav File if it exists
         void reloadSave();
 
-        // Bool to check if the A Cartridge was previously loaded
+        // Bool to check if the a Cartridge was previously loaded
         bool cartridgeLoaded = false;
+        // Current Rom Name Used By the GUI
         std::string CurrentRom = "";
+        // Holds the Location of the Last Rom Used 
+        std::string LastRomDir = "";
+        // Holds the Current Directory Used By the GUI
         char CurrentDir[256] = "../../GBEmu/Roms/";
-
     };
 }

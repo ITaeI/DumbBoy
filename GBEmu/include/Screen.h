@@ -176,7 +176,7 @@ namespace GBEmu
 
         // Aspect Ratio Calculation
         ImVec2 CalculateImageSize(float W, float H);
-        // GB Screen Center Calculation
+        // Texture Centering Calculation
         void CenterTexture(ImVec2 TextureSize);
 
         //Event Handling

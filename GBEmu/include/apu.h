@@ -44,6 +44,8 @@ namespace GBEmu
         u8 SweepTimer;
         bool SweepEnabled;
 
+        u8 negateModeCalculations = 0;
+
         void FrequencySweep();
         u16 FrequencyCalculation();
 

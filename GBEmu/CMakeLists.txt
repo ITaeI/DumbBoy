@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.24)
 set(CMAKE_CXX_STANDARD 20)
 
 # --- Setup Project --- #
-project(GBEmu) 
+project(DumbBoy) 
 set(EXECUTABLE_NAME ${PROJECT_NAME})  
 
 
@@ -13,6 +13,8 @@ set(IMGUI_DIR ${Third_Party_DIR}/imgui)
 set(IMGUI_BACKENDS ${IMGUI_DIR}/backends)
 
 # --- Tell CMAKE where to find SDL Package --- #
+set(SDL_STATIC ON)  # Enable static library
+set(SDL_SHARED OFF) # Disable shared library
 add_subdirectory(${Third_Party_DIR}/SDL)
 
 # --- Build Imgui Library --- #
@@ -24,6 +26,7 @@ target_include_directories(
     PUBLIC
     ${IMGUI_DIR}
     ${IMGUI_BACKENDS} 
+    ${Third_Party_DIR}/SDL/include
 )
 
 target_sources(
@@ -44,11 +47,11 @@ target_sources(
 # --- Setup GB Sources and Header directories ---#
 
 file(GLOB GB_SOURCES "src/*.cpp")
-add_executable(${PROJECT_NAME} ${GB_SOURCES}) 
+add_executable(${PROJECT_NAME} WIN32 ${GB_SOURCES}) 
 set(EXECUTABLE_NAME ${PROJECT_NAME})
 target_include_directories(${EXECUTABLE_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/include) 
 
 # --- Link Libraries together --- #
-target_link_libraries(imgui PUBLIC SDL3::SDL3)
+target_link_libraries(imgui PUBLIC SDL3-static) 
 target_link_libraries(${EXECUTABLE_NAME} PRIVATE imgui) 
 

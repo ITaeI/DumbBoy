@@ -556,7 +556,7 @@ namespace GBEmu
             // Replace the .gb extension with .sav
             size_t extensionPos = savePath.find_last_of('.'); //Grabs last occurence of Extension ID
             
-            savePath = "../../GBEmu/Saves/" + savePath.substr(0,extensionPos) + ".sav";
+            savePath = LastRomDir + savePath.substr(0,extensionPos) + ".sav";
             std::ofstream saveFile;
             
             saveFile.open(savePath, std::ios::binary);
@@ -578,7 +578,7 @@ namespace GBEmu
             // Replace the .gb extension with .sav
             size_t extensionPos = savePath.find_last_of('.'); //Grabs last occurence of Extension ID
             
-            savePath = "../../GBEmu/Saves/" + savePath.substr(0,extensionPos) + ".rtc";
+            savePath = LastRomDir + savePath.substr(0,extensionPos) + ".rtc";
             std::ofstream saveFile;
             
             saveFile.open(savePath, std::ios::binary);
@@ -606,7 +606,7 @@ namespace GBEmu
             // Replace the .gb extension with .sav
             size_t extensionPos = savePath.find_last_of('.'); //Grabs last occurence of Extension ID
             
-            savePath = "../../GBEmu/Saves/" + savePath.substr(0,extensionPos) + ".sav"; 
+            savePath = LastRomDir + savePath.substr(0,extensionPos) + ".sav"; 
 
             std::ifstream saveFile;
 
@@ -629,7 +629,7 @@ namespace GBEmu
             // Replace the .gb extension with .sav
             size_t extensionPos = savePath.find_last_of('.'); //Grabs last occurence of Extension ID
             
-            savePath = "../../GBEmu/Saves/" + savePath.substr(0,extensionPos) + ".rtc"; 
+            savePath = LastRomDir + savePath.substr(0,extensionPos) + ".rtc"; 
 
             std::ifstream saveFile;
 
@@ -658,16 +658,21 @@ namespace GBEmu
         {
             CurrentDir[DirLength] = '/';
         }
+
+        // Make a copy so we know where to save and reload save files
+        LastRomDir = CurrentDir;
+
+        // Using File name the current Directory Build a file path
         std::string filepath = CurrentDir + std::string(filename);
 
         // Open the file and seek to the end
         std::ifstream file(filepath, std::ios::binary| std::ios::ate);
         if (!file.is_open())
         {
+            // If File cannot be found Stop the CPU thread
+            Emu->stopCPU();
             return false;
         }
-
-        std::cout << "Loading ROM: " << filename << std::endl;
 
         // Get the file size and seek back to the beginning
         //since we are at the end of the file we can get the size from the pointer location
