@@ -40,9 +40,9 @@ A fun side project on emulating an original Gameboy (and possibly Gameboy color)
 
 ## Installation
 
-- Install [Cmake]https://cmake.org/download/ Minimum 3.24
+- Install [Cmake](https://cmake.org/download/) Minimum 3.24
 
-    git clone --recursive-submodules https://github.com/ITaeI/DumbBoy.git ./DumbBoy
+      git clone --recursive-submodules https://github.com/ITaeI/DumbBoy.git ./DumbBoy
 
 
 ### Using Visual Studio Code
@@ -71,7 +71,7 @@ On the search bar on the top of the screen:
     mkdir build
     cd build
     cmake ..
-    cmake --build . --conifg Release
+    cmake --build . --config Release
 
      
 ## Usage
