@@ -20,9 +20,14 @@ A fun side project on emulating an original Gameboy (and possibly Gameboy color)
 
 ## Screenshots
 
-![FullScreen](DumbBoy/Screenshots/FullScreen.jpg)
-![Background](DumbBoy/Screenshots/Background.jpg)
-![Tiles](DumbBoy/Screenshots/Tiles.jpg)
+![FullScreen](GBEmu/Screenshots/FullScreen.jpg)
+
+
+![Background](GBEmu/Screenshots/Background.jpg)
+
+
+![Tiles](GBEmu/Screenshots/Tiles.jpg)
+
 
 ## Features
 
@@ -35,9 +40,10 @@ A fun side project on emulating an original Gameboy (and possibly Gameboy color)
 
 ## Installation
 
-### Install [Cmake]https://cmake.org/download/ Minimum 3.24
+- Install [Cmake]https://cmake.org/download/ Minimum 3.24
 
     git clone --recursive-submodules https://github.com/ITaeI/DumbBoy.git ./DumbBoy
+
 
 ### Using Visual Studio Code
 
@@ -49,7 +55,8 @@ A fun side project on emulating an original Gameboy (and possibly Gameboy color)
 
 On the search bar on the top of the screen:
 
-- >Cmake Quick Start
+    >Cmake Quick Start
+
 
 ### Using Visual Studio
 
@@ -71,23 +78,18 @@ On the search bar on the top of the screen:
 
 ### Keyboard Bindings
 
-    |:---------:|
-    |Up    |   W|
-    |:---------:|                            
-    |Left  |   A|
-    |:---------:|
-    |Down  |   S|
-    |:---------:|
-    |Right |   D|
-    |:---------:|
-    |A     |   L|
-    |:---------:|
-    |B     |   K|
-    |:---------:|
-    |Start |   O|
-    |:---------:|
-    |Select|   P|
-    |:---------:|
+
+| Game Boy | Keyboard |
+|----------|----------|
+|A         |L         |
+|B         |K         |
+|Start     |O         |
+|Select    |P         |
+|Right     |D         |
+|Left      |A         |
+|Up        |W         |
+|Down      |S         |
+
 
 ### Rom Select
 
