@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.24)
 set(CMAKE_CXX_STANDARD 20)
 
 # --- Setup Project --- #
-project(DumbBoy) 
+project(GBEmu) 
 set(EXECUTABLE_NAME ${PROJECT_NAME})  
 
 
@@ -47,8 +47,14 @@ target_sources(
 # --- Setup GB Sources and Header directories ---#
 
 file(GLOB GB_SOURCES "src/*.cpp")
-add_executable(${PROJECT_NAME} WIN32 ${GB_SOURCES}) 
-set(EXECUTABLE_NAME ${PROJECT_NAME})
+
+set(EXECUTABLE_NAME "DumbBoy")
+if(WIN32)
+    add_executable(${EXECUTABLE_NAME} WIN32 ${GB_SOURCES}) 
+else()
+    add_executable(${EXECUTABLE_NAME} ${GB_SOURCES}) 
+endif()
+
 target_include_directories(${EXECUTABLE_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/include) 
 
 # --- Link Libraries together --- #

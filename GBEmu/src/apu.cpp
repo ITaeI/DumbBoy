@@ -53,10 +53,10 @@ namespace GBEmu
     void APU::FrameSequencer()
     {
 
-        if(!GlobalRegs.AudioMasterControlNR52.OnOff)
-        {
-            return;
-        }
+        // if(!GlobalRegs.AudioMasterControlNR52.OnOff)
+        // {
+        //     return;
+        // }
 
         DIVAPU = (1+DIVAPU) % 8;
 
@@ -69,7 +69,6 @@ namespace GBEmu
                 if(--Ch1.RemainingLength == 0)
                 {
                     GlobalRegs.AudioMasterControlNR52.Ch1On = 0;
-
 
                 }
             }
@@ -439,6 +438,7 @@ namespace GBEmu
             // 7: Audio Master control on/off 
             // 0-3: Ch 1-4 on?
             return 0x70 | GlobalRegs.AudioMasterControlNR52.Raw;
+            break;
         default:
             break;
         }
@@ -541,6 +541,11 @@ namespace GBEmu
         case 0xFF14:
             Ch1.LengthPrevEnabled = Ch1.NR14.LengthEnable;
             Ch1.NR14.Raw = data;
+
+            if(data == 0xC0)
+            {
+                std::cout << "Break";
+            }
 
             if(Ch1.NR14.LengthEnable && ! Ch1.LengthPrevEnabled)
             {
@@ -720,17 +725,16 @@ namespace GBEmu
 
         apu->GlobalRegs.AudioMasterControlNR52.Ch1On = 0;
         
-        Frequency = 0;
-        FrequencyTimer = 0;
-        //RemainingLength = 0;
-        EnvelopeEnabled = false;
-        EnvelopeTimer = 0;
-        Volume = 0;
-        SweepTimer = 0;
+        // Frequency = 0;
+        // FrequencyTimer = 0;
+        // EnvelopeEnabled = false;
+        // EnvelopeTimer = 0;
+        // Volume = 0;
+        // SweepTimer = 0;
 
 
-        Phase = 0;
-        DutyPhaseTimer = 0;
+        // Phase = 0;
+        // DutyPhaseTimer = 0;
     }
 
 
@@ -739,6 +743,7 @@ namespace GBEmu
         // Enable Channel 1
         if(apu->DACState[0])
             apu->GlobalRegs.AudioMasterControlNR52.Ch1On = 1;
+
         // Reset Length Timer if expired
         if(RemainingLength == 0)
         {
@@ -793,6 +798,8 @@ namespace GBEmu
         // Reload Frequency Timer
         FrequencyTimer = ((2048 - Frequency) * 4) & 0xFC;
 
+        if(!apu->DACState[0])
+            apu->GlobalRegs.AudioMasterControlNR52.Ch1On = 0; 
     }
 
     void Channel1::tick()
@@ -801,6 +808,7 @@ namespace GBEmu
         {
             return;
         }
+
         if(--FrequencyTimer == 0)
         {
             FrequencyTimer = (2048 - Frequency) *4;
@@ -817,15 +825,14 @@ namespace GBEmu
         
         apu->GlobalRegs.AudioMasterControlNR52.Ch2On = 0;
 
-        Frequency = 0;
-        FrequencyTimer = 0;
-        //RemainingLength = 0;
-        EnvelopeEnabled = false;
-        EnvelopeTimer = 0;
-        Volume = 0;
+        // Frequency = 0;
+        // FrequencyTimer = 0;
+        // EnvelopeEnabled = false;
+        // EnvelopeTimer = 0;
+        // Volume = 0;
 
-        Phase = 0;
-        DutyPhaseTimer = 0;
+        // Phase = 0;
+        // DutyPhaseTimer = 0;
     }
 
     void Channel2::trigger()
@@ -887,17 +894,16 @@ namespace GBEmu
 
         apu->GlobalRegs.AudioMasterControlNR52.Ch3On = 0;
         
-        Frequency = 0;
-        FrequencyTimer = 0;
-        //RemainingLength = 0;
-        EnvelopeEnabled = false;
-        Volume = 0;
+        // Frequency = 0;
+        // FrequencyTimer = 0;
+        // EnvelopeEnabled = false;
+        // Volume = 0;
 
-        SampleBuffer = 0;
-        WaveIndex = 0;
+        // SampleBuffer = 0;
+        // WaveIndex = 0;
 
-        Phase = 0;
-        DutyPhaseTimer = 0;
+        // Phase = 0;
+        // DutyPhaseTimer = 0;
     }
 
     void Channel3::trigger()
@@ -936,7 +942,9 @@ namespace GBEmu
         if(--FrequencyTimer == 0)
         {
             FrequencyTimer = 2 * (2048 - Frequency);
-            
+
+            WaveIndex = (WaveIndex +1) % 32;
+
             if(WaveIndex % 2 == 1)
             {
                 SampleBuffer = apu->waveRam[WaveIndex/2] & 0x0F;
@@ -946,7 +954,6 @@ namespace GBEmu
                 SampleBuffer = (apu->waveRam[WaveIndex/2] & 0xF0 ) >> 4;
             }
 
-            WaveIndex = (WaveIndex +1) % 32;
         }
     }
 
@@ -959,17 +966,16 @@ namespace GBEmu
 
         apu->GlobalRegs.AudioMasterControlNR52.Ch4On = 0;
         
-        Frequency = 0;
-        FrequencyTimer = 0;
-        //RemainingLength = 0;
-        EnvelopeEnabled = false;
-        EnvelopeTimer = 0;
-        Volume = 0;
+        // Frequency = 0;
+        // FrequencyTimer = 0;
+        // EnvelopeEnabled = false;
+        // EnvelopeTimer = 0;
+        // Volume = 0;
 
-        LFSR = 0x00;
+        // LFSR = 0x00;
 
-        Phase = 0;
-        DutyPhaseTimer = 0;
+        // Phase = 0;
+        // DutyPhaseTimer = 0;
     }
 
     void Channel4::trigger()

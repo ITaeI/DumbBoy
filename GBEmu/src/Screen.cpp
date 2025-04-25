@@ -5,6 +5,8 @@
 
 #ifdef _WIN32
 #include <Windows.h>
+#elif __APPLE__ || __linux__
+#include <dirent.h>
 #endif
 
 namespace GBEmu
@@ -1019,6 +1021,35 @@ namespace GBEmu
             } while (FindNextFile(hFindGBC, &findFiles) != 0);
             FindClose(hFindGBC);
 
+
+        }
+
+#elif __APPLE__ || __linux__
+        DIR* dir = opendir(Dir.c_str());
+        if (dir)
+        {
+            struct dirent* entry;
+            while ((entry = readdir(dir)) != nullptr)
+            {
+                std::string fileName = entry->d_name;
+
+                // Skip "." and ".." entries
+                if (fileName == "." || fileName == "..")
+                    continue;
+
+                // Check if the file has the .gb or .gbc extension
+                if (fileName.size() >= RomTypeGB.size() &&
+                    fileName.compare(fileName.size() - RomTypeGB.size(), RomTypeGB.size(), RomTypeGB) == 0)
+                {
+                    RomList.emplace_back(fileName);
+                }
+                else if (fileName.size() >= RomTypeGBC.size() &&
+                        fileName.compare(fileName.size() - RomTypeGBC.size(), RomTypeGBC.size(), RomTypeGBC) == 0)
+                {
+                    RomList.emplace_back(fileName);
+                }
+            }
+            closedir(dir);
         }
 #endif
 
