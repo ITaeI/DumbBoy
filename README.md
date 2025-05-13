@@ -31,7 +31,7 @@ A fun side project on emulating an original Gameboy (and possibly Gameboy color)
 
 ## Features
 
-- Accurate CPU, PPU, timer emulation
+- DMG Emulation
 - Debug Windows to inspect Tiles and registers
 - Simple Folder Scanning (For gb and gbc roms)
 - MBC1, MBC2, MBC3 are available
@@ -41,29 +41,9 @@ A fun side project on emulating an original Gameboy (and possibly Gameboy color)
 ## Installation
 
 - Install [Cmake](https://cmake.org/download/) Minimum 3.24
-
+- Clone the repository:
+  
       git clone --recurse-submodules https://github.com/ITaeI/DumbBoy.git ./DumbBoy
-
-
-### Using Visual Studio Code
-
-- Visual Studio Code has a two extensions (Use Both)
-    - Cmake : twxs
-    - Cmake Tools : Microsoft
-
-#### Quick Startup
-
-On the search bar on the top of the screen:
-
-    >Cmake Quick Start
-
-
-### Using Visual Studio
-
-- A Workload is available that includes Cmake
-    - Tools -> Get Tools and Features ->  Workloads -> Desktop development with C++
-    - Tools -> Get Tools and Features -> Individual Components -> C++ Cmake tools for Windows
-
 
 ### Build Via CommandLine
 
